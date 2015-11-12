@@ -1,0 +1,109 @@
+# *****************************************************************************
+# File:  Makefile.in
+#
+# Purpose:
+#   makefile for main source tree
+#
+# Programmer:  Jeremy Meredith
+# Creation:    March  9, 2011
+#
+# Modifications:
+# *****************************************************************************
+@VARIABLES@
+
+ARCHIVE=../lib/libeavl.a
+LIBRARY=../lib/libeavl.so
+
+OBJ=\
+ common/eavlArray.o \
+ common/eavlFlatArray.o \
+ common/eavlAtomicProperties.o \
+ common/eavlCUDA.o \
+ common/eavlCellSet.o \
+ common/eavlCellComponents.o \
+ common/eavlCellSetExplicit.o \
+ common/eavlCoordinates.o \
+ common/eavlCompositor.o \
+ common/eavlDataSet.o \
+ common/eavlExecutor.o \
+ common/eavlLogicalStructure.o \
+ common/eavlNewIsoTables.o \
+ common/eavlOperation.o \
+ common/eavlTimer.o \
+ common/eavlUtility.o \
+ exporters/eavlVTKExporter.o \
+ exporters/eavlPNMExporter.o \
+ filters/eavl2DGraphLayoutForceMutator.o \
+ filters/eavl3X3AverageMutator.o \
+ filters/eavlBinaryMathMutator.o \
+ filters/eavlBoxMutator.o \
+ filters/eavlCellToNodeRecenterMutator.o \
+ filters/eavlElevateMutator.o \
+ filters/eavlExternalFaceMutator.o \
+ filters/eavlIsosurfaceFilter.o \
+ filters/eavlPointDistanceFieldFilter.o \
+ filters/eavlSimpleVRMutator.o \
+ filters/eavlScalarBinFilter.o \
+ filters/eavlSubsetMutator.o \
+ filters/eavlSurfaceNormalMutator.o \
+ filters/eavlTesselate2DFilter.o \
+ filters/eavlThresholdMutator.o \
+ filters/eavlTransformMutator.o \
+ filters/eavlUnaryMathMutator.o \
+ filters/eavlSelectionMutator.o \
+ fonts/eavlBitmapFont.o \
+ fonts/eavlBitmapFontFactory.o \
+ fonts/Liberation2Mono.o \
+ fonts/Liberation2Sans.o \
+ fonts/Liberation2Serif.o \
+ importers/eavlBOVImporter.o \
+ importers/eavlCurveImporter.o \
+ importers/eavlImporterFactory.o \
+ importers/eavlLAMMPSDumpImporter.o \
+ importers/eavlMADNESSImporter.o \
+ importers/eavlPDBImporter.o \
+ importers/eavlPNGImporter.o \
+ importers/eavlVTKImporter.o \
+ importers/lodepng.o \
+ math/eavlMatrix4x4.o \
+ math/eavlPoint3.o \
+ math/eavlVector3.o \
+ raytracing/MortonBVHBuilder.o \
+ raytracing/eavlRayCamera.o \
+ raytracing/eavlRayTriangleIntersector.o \
+ raytracing/eavlRayTriangleGeometry.o \
+ raytracing/eavlRayTracer.o \
+ raytracing/eavlPathTracer.o \
+ rendering/eavlColor.o
+
+ifneq (@VTK@, no)
+ OBJ+=vtk/eavlVTKDataSet.o
+endif
+
+ifneq (@NETCDF@, no)
+ OBJ+=importers/eavlNetCDFImporter.o
+ OBJ+=importers/eavlNetCDFDecomposingImporter.o
+endif
+
+ifneq (@SILO@, no)
+ OBJ+=importers/eavlSiloImporter.o
+ OBJ+=importers/eavlChimeraImporter.o
+endif
+
+ifneq (@ADIOS@, no)
+ OBJ+=importers/eavlADIOSImporter.o
+ OBJ+=importers/eavlXGCImporter.o
+ OBJ+=importers/eavlXGCParticleImporter.o
+endif
+
+CPPFLAGS+=-I../config -Icommon/ -Ifonts/ -Iimporters/ -Imath/ -Irendering/ -Iexecutor/ -Ifunctors/ -Ioperations/ -Ifilters/ -Iexporters/ -Ivtk/ -Iraytracing/
+CPPFLAGS+=$(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(NETCDF_CPPFLAGS) $(SILO_CPPFLAGS) $(CUDA_CPPFLAGS) $(ADIOS_CPPFLAGS) $(VTK_CPPFLAGS) $(MESA_CPPFLAGS)
+
+LIBS=-lm
+
+LDFLAGS+=$(CUDA_LDFLAGS)
+LIBS+=$(CUDA_LIBS)
+
+all: $(PROGRAM) @LIBRARY_OR_ARCHIVE@
+
+@TARGETS@

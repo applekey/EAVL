@@ -1,0 +1,112 @@
+# *****************************************************************************
+# File:  Makefile.in
+#
+# Purpose:
+#   makefile for test directory
+#
+# Programmer:  Jeremy Meredith
+# Creation:    July 19, 2011
+#
+# Modifications:
+# *****************************************************************************
+@VARIABLES@
+
+ifneq (@VTK@, no)
+VTKTESTS=testvtk
+endif
+
+ifneq (@MESA@, no)
+RENDERTESTS=testrender
+endif
+
+ifneq (@ADIOS@, no)
+ADIOSTESTS=testxgc
+endif
+
+TESTS = testimport testiso testnormal testrecenter testthreshold testbox testmath testdatamodel testxform testbin testdistancefield testgraphlayout testatompipeline testserialize testray testsort testvolume $(ADIOSTESTS)  $(RENDERTESTS) $(VTKTESTS)
+
+OBJ = $(TESTS:=.o)
+LIBDEP=$(TOPDIR)/lib/$(LIB_NAME)
+
+all: $(TESTS)
+	@echo ""
+	@echo "Run 'make check' to run validation tests."
+	@echo ""
+
+check test: $(LIBDEEP) $(TESTS)
+	@if test -z `which python`; then \
+	   echo "Warning; need python to run full test suite"; \
+	else \
+	   echo "== Running tests =="; \
+	   python runtest.py; \
+	fi
+
+testimport: $(LIBDEP) testimport.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testiso: $(LIBDEP) testiso.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testnormal: $(LIBDEP) testnormal.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testrecenter: $(LIBDEP) testrecenter.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testthreshold: $(LIBDEP) testthreshold.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testbox: $(LIBDEP) testbox.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testmath: $(LIBDEP) testmath.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testdatamodel: $(LIBDEP) testdatamodel.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testxform: $(LIBDEP) testxform.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testbin: $(LIBDEP) testbin.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testdistancefield: $(LIBDEP) testdistancefield.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testgraphlayout: $(LIBDEP) testgraphlayout.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testatompipeline: $(LIBDEP) testatompipeline.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testvtk: $(LIBDEP) testvtk.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testserialize: $(LIBDEP) testserialize.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testray: $(LIBDEP) testray.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testxgc: $(LIBDEP) testxgc.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testrender: $(LIBDEP) testrender.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testsort: $(LIBDEP) testsort.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+testvolume: $(LIBDEP) testvolume.o
+	$(CXX) $(@:=.o) -o $@ $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+LIBS=-lm -L$(TOPDIR)/lib -leavl
+#LIBS=-lm -lrt -L$(TOPDIR)/lib -leavl
+
+CPPFLAGS+= -I$(TOPDIR)/config -I$(TOPDIR)/src/math/ -I$(TOPDIR)/src/common/ -I$(TOPDIR)/src/functors/ -I$(TOPDIR)/src/filters/ -I$(TOPDIR)/src/importers -I$(TOPDIR)/src/exporters -I$(TOPDIR)/src/executor -I$(TOPDIR)/src/operations -I$(TOPDIR)/src/rendering -I$(TOPDIR)/src/fonts -I$(TOPDIR)/src/vtk -I$(TOPDIR)/src/raytracing/
+CPPFLAGS+=$(VTK_CPPFLAGS) $(SILO_CPPFLAGS) $(ADIOS_CPPFLAGS) $(NETCDF_CPPFLAGS) $(CUDA_CPPFLAGS) $(MESA_CPPFLAGS) -g
+LDFLAGS+=$(VTK_LDFLAGS) $(SILO_LDFLAGS) $(ADIOS_LDFLAGS) $(NETCDF_LDFLAGS) $(HDF5_LDFLAGS) $(CUDA_LDFLAGS) $(MESA_LDFLAGS)
+LIBS+=$(VTK_LIBS) $(SILO_LIBS) $(ADIOS_LIBS) $(NETCDF_LIBS) $(HDF5_LIBS) $(ZLIB_LIBS) $(CUDA_LIBS) $(MESA_LIBS)
+
+@TARGETS@
