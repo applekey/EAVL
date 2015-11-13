@@ -97,7 +97,11 @@ class eavlSimpleVRMutator : public eavlMutator
     eavlVRScene*        scene;
 public:
     eavlIntArray* sumSamples;
-    void performScreenSpaceTransform(eavlIntArray *tetIds);
+    void performScreenSpaceTransform(eavlIntArray *tetIds, int number);
+    eavlFloatArray*     ssa; 
+    eavlFloatArray*     ssb;
+    eavlFloatArray*     ssc;
+    eavlFloatArray*     ssd;
   protected:
     string fieldname;
     string  tfFilename;
@@ -146,10 +150,7 @@ public:
     eavlByteArray*      rgba;
     
 
-    eavlFloatArray*     ssa; 
-    eavlFloatArray*     ssb;
-    eavlFloatArray*     ssc;
-    eavlFloatArray*     ssd;
+   
     eavlFloatArray*     zBuffer;
     eavlIntArray*		minSample; 			// Keeps the pixel depth of the first sample so we can  get correct zbuff
     eavlFloatArray*     dummy;
