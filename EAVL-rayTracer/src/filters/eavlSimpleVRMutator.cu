@@ -950,16 +950,21 @@ struct PassThreshFunctor
 
 //-------------------------------------------------
 
-void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds)
+void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int number)
 {
-    int numPassMembers = tetIds->GetNumberOfTuples();
+    cerr<<"IN PerformScreen\n";
+	int numPassMembers = tetIds->GetNumberOfTuples();
     int outputArraySize = ssa->GetNumberOfTuples() / 3;
-    if(numPassMembers > outputArraySize)
+   
+   cerr<<"Number of Big Cells "<<numPassMembers<<"\n"; 
+
+   if(numPassMembers > outputArraySize)
     {
         cout<<"WARNING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
         cout<<"Too many input cells for screen space transform\n";
         exit(1);
     }
+
     eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(tetIds),
                                                      eavlOpArgs(eavlIndexable<eavlFloatArray>(ssa,*i1),
                                                                 eavlIndexable<eavlFloatArray>(ssa,*i2),
@@ -973,16 +978,13 @@ void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds)
                                                                 eavlIndexable<eavlFloatArray>(ssd,*i1),
                                                                 eavlIndexable<eavlFloatArray>(ssd,*i2),
                                                                 eavlIndexable<eavlFloatArray>(ssd,*i3)),
-                                                    ScreenSpaceFunctor(xtet,ytet,ztet,view, nSamples, xmin,ymin,zmin),passSize),
+                                                    ScreenSpaceFunctor(xtet,ytet,ztet,view, nSamples, xmin,ymin,zmin),number),
                                                     "Screen Space transform");
-    eavlExecutor::Go();
-    eavlIntArray** tetSS;
-
-    //for(int i=0; i<4; i++)
-    //for(int i=0; ssa->GetNumberOfTuples(); i++)
-
-
-
+    
+	
+    cerr<<"AddOperation done\n";
+	eavlExecutor::Go();
+	cerr<<"Executor done\n";
 }
 
 void eavlSimpleVRMutator::findCurrentPassMembers(int pass)
@@ -1258,7 +1260,9 @@ void  eavlSimpleVRMutator::Execute()
             int tsspace;
             if(verbose) tsspace = eavlTimer::Start();
             
-            performScreenSpaceTransform(currentPassMembers);
+            performScreenSpaceTransform(currentPassMembers,passSize);
+
+
     
             if(verbose) screenSpaceTime += eavlTimer::Stop(tsspace,"sample");
             int tsample;
