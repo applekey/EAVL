@@ -330,7 +330,8 @@ struct PassRange
 
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
-        if(tetNumofSample > CellThreshold)   
+
+        if(tetNumofSample > CellThreshold)
                return tuple<byte,byte,int>(255,255,tetNumofSample);
       
        else

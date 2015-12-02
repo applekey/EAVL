@@ -102,6 +102,7 @@ public:
     eavlFloatArray*     ssb;
     eavlFloatArray*     ssc;
     eavlFloatArray*     ssd;
+
   protected:
     string fieldname;
     string  tfFilename;
