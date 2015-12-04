@@ -369,7 +369,6 @@ int main(int argc, char *argv[])
         eavlDataSet *data = importer->GetMesh(meshlist.at(meshIdx), domainindex);
         
         
-        
         int numCellSets = data->GetNumCellSets();
 
         if( (!cellSetSpecified && numCellSets > 1) || (cellSetSpecified && cellSetIdx > numCellSets))
@@ -498,24 +497,27 @@ int main(int argc, char *argv[])
         //myTransfer.AddAlphaControlPoint(0.75,0.6);
         //myTransfer.AddAlphaControlPoint(1.0,0.0);
         //myTransfer.CreateDefaultAlpha();
+	/*
 	 float pos;
     for(int i=0; i<256; i++)
     {
         pos = i/256.0;
         //cerr<<"Position "<<pos<<"\n";
         myTransfer.AddAlphaControlPoint(pos,opac2[i]/255);
-	}
+	}*/
         float *ctable = new float[1024 *4];
         myTransfer.GetTransferFunction(1024, ctable);
         vrenderer->setColorMap4f(ctable, 1024);
+        cerr<<"Set TF\n";
         if(!isTest)
         {
-            cout<<"Rendering to Framebuffer\n";
+            cerr<<"Rendering to Framebuffer\n";
             for(int i=0; i<1;i++)
             {
                 vrenderer->Execute();
             }
 
+            cerr<<"Done Execute\n";
             writeFrameBufferBMP(height, width, vrenderer->getRealFrameBuffer(), outFilename.c_str());
             cerr<<"Done writing BMP\n";
         }

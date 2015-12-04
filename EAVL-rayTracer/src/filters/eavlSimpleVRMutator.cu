@@ -331,7 +331,7 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-        if(tetNumofSample > CellThreshold)
+       if(tetNumofSample > CellThreshold)
                return tuple<byte,byte,int>(255,255,tetNumofSample);
       
        else
@@ -600,7 +600,8 @@ struct CompositeFunctorFB
             if(color.w >=1 ) break;
 
         }
-    
+   	
+	cerr<<"Min Sample "<<minZsample<<"\n"; 
         return tuple<float,float,float,float,int>(min(1.f, color.x),  min(1.f, color.y),min(1.f, color.z),min(1.f,color.w), minZsample);
         
     }
@@ -953,11 +954,11 @@ struct PassThreshFunctor
 
 void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int number)
 {
-    cerr<<"IN PerformScreen\n";
+    //cerr<<"IN PerformScreen\n";
 	int numPassMembers = tetIds->GetNumberOfTuples();
     int outputArraySize = ssa->GetNumberOfTuples() / 3;
    
-   cerr<<"Number of Big Cells "<<numPassMembers<<"\n"; 
+  // cerr<<"Number of Big Cells "<<numPassMembers<<"\n"; 
 
    if(numPassMembers > outputArraySize)
     {
@@ -983,7 +984,7 @@ void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int 
                                                     "Screen Space transform");
     
 	
-    cerr<<"AddOperation done\n";
+    //cerr<<"AddOperation done\n";
 	eavlExecutor::Go();
 	cerr<<"Executor done\n";
 }
@@ -1263,7 +1264,7 @@ void  eavlSimpleVRMutator::Execute()
             
             performScreenSpaceTransform(currentPassMembers,passSize);
 
-
+	    //cerr<<"Done Screen Space Transform\n";
     
             if(verbose) screenSpaceTime += eavlTimer::Stop(tsspace,"sample");
             int tsample;
@@ -1285,7 +1286,8 @@ void  eavlSimpleVRMutator::Execute()
                                                      SampleFunctor3(scalars_array, view, nSamples, samplePtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin),passSize),
                                                      "Sampler");
             eavlExecutor::Go();
-            
+            cerr<<"Done 1 \n";
+
             if(verbose) sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
             if(verbose) talloc = eavlTimer::Start();
@@ -1309,8 +1311,13 @@ void  eavlSimpleVRMutator::Execute()
                                                                  eavlIndexable<eavlIntArray>(minSample)),
                                                      CompositeFunctorFB( view, nSamples, samplePtr, color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin), width*height),
                                                      "Composite");
-            eavlExecutor::Go();
+            
+	    cerr<<"Add composite op\n";
+	    eavlExecutor::Go();
+	    cerr<<"Done 2 \n";
             if(verbose) compositeTime += eavlTimer::Stop(tcomp,"tcomp");
+
+	    cerr<<"Done composite \n";
         }
     }//for each pass
     if(verbose) renderTime  = eavlTimer::Stop(ttot,"total render");
