@@ -1,0 +1,3 @@
+./testvolume -f ~/Data/hardyTet.vtk -tf enzo128Tet_camera -o volRen -fld 3
+
+- When Using hardy data set chose the fieldIdx to be = 3 
