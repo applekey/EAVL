@@ -31,12 +31,13 @@ void printUsage()
     cerr<<"     -cell Index of field in file.          Example : -fld 0"<<endl;
     cerr<<"     -o    Image output filename .          Example : -o outfile"<<endl;
     cerr<<"     -of   Opacity factor                   Example : -of .5"<<endl;
-    //cerr<<"     -cla  Camera Look At Pos               Example : -cla 0 0 0"<<endl;
+    cerr<<"     -cla  Camera Look At Pos               Example : -cla 0 0 0"<<endl;
     //cerr<<"     -fovx Field of view X                  Example : -fovx 45.0"<<endl;
     //cerr<<"     -fovy Field of view Y                  Example : -fovy 45.0"<<endl;
     cerr<<"     -res  Resolution height width          Example : -res width height"<<endl;
     cerr<<"     -spp  Samples per pixel                Example : -ssp 1000  "<<endl;
     cerr<<"     -cpu  Force CPU execution(GPU Default) "<<endl;
+    cerr<<"     -pos  Camera Position "<<endl;
     cerr<<"     -test render timing                    Example : -test 50 100 (warm up and test rounds)"<<endl;
     cerr<<"     -closeup                               Example : -closeup"<<endl;
     exit(1);
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
         int tests = 1;
         int height = 500;
         int width = 500;
-        int samples = 300;
+        int samples = 1000;
         int numPasses = 1;
         int meshIdx = 0;
         bool meshSpecified = false;
@@ -106,7 +107,9 @@ int main(int argc, char *argv[])
         bool verbose = false; 
         bool closeup = false;
         float opactiyFactor;
-
+        float xPos = 0.0;
+        float yPos = 0.0;
+        float zPos = 0.0;
        
         if(argc<2)
         {
@@ -154,6 +157,23 @@ int main(int argc, char *argv[])
                 width  = x;
                 
             }
+            else if(strcmp (argv[i],"-pos")==0)
+            {
+                if(argc<=i+3) 
+                {
+                    cerr<<"Not enough input for resolution."<<endl;
+                    printUsage();
+                }
+                
+                xPos = atoi(argv[++i]);
+                yPos = atoi(argv[++i]);
+                zPos = atoi(argv[++i]);
+                //float x = 0; x = atoi(argv[++i]);
+                //float y = 0; y = atoi(argv[++i]);
+                
+                
+            }
+
             else if(strcmp (argv[i],"-ssp")==0)
             {
                 if(argc <= i + 1) 
@@ -399,6 +419,7 @@ int main(int argc, char *argv[])
             exit(0);
         }*/
         //fieldIdx = 3;
+	    //fieldIdx = 3;
         cout<<"Using field      : "<<fieldList.at(fieldIdx)<<endl;
         data->AddField(importer->GetField(fieldList.at(fieldIdx), meshlist.at(meshIdx), domainindex));
         cout<<"---------------------------------------------------------"<<endl;
@@ -448,7 +469,8 @@ int main(int argc, char *argv[])
         view.view3d.perspective = true;
         view.view3d.at   = center;
         float fromDist  = (closeup) ? ds_size : ds_size*2;
-        view.view3d.from = view.view3d.at + eavlVector3(fromDist,0,0);
+        //-41.761740539 55.9060332268
+        view.view3d.from = eavlPoint3(xPos,yPos,zPos);//view.view3d.at + eavlVector3(fromDist,0,0);
         view.view3d.up   = eavlVector3(0,0,1);
         view.view3d.fov  = 0.5;
         view.view3d.xpan = 0;
@@ -497,14 +519,14 @@ int main(int argc, char *argv[])
         //myTransfer.AddAlphaControlPoint(0.75,0.6);
         //myTransfer.AddAlphaControlPoint(1.0,0.0);
         //myTransfer.CreateDefaultAlpha();
-	/*
+	
 	 float pos;
     for(int i=0; i<256; i++)
     {
         pos = i/256.0;
         //cerr<<"Position "<<pos<<"\n";
-        myTransfer.AddAlphaControlPoint(pos,opac2[i]/255);
-	}*/
+        myTransfer.AddAlphaControlPoint(pos,opac1[i]/255);
+	}
         float *ctable = new float[1024 *4];
         myTransfer.GetTransferFunction(1024, ctable);
         vrenderer->setColorMap4f(ctable, 1024);
