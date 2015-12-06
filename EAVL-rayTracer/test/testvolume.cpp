@@ -37,7 +37,7 @@ void printUsage()
     cerr<<"     -res  Resolution height width          Example : -res width height"<<endl;
     cerr<<"     -spp  Samples per pixel                Example : -ssp 1000  "<<endl;
     cerr<<"     -cpu  Force CPU execution(GPU Default) "<<endl;
-    cerr<<"     -pos  Camera Position "<<endl;
+    cerr<<"     -rot  Camera Position "<<endl;
     cerr<<"     -test render timing                    Example : -test 50 100 (warm up and test rounds)"<<endl;
     cerr<<"     -closeup                               Example : -closeup"<<endl;
     exit(1);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
         float xPos = 0.0;
         float yPos = 0.0;
         float zPos = 0.0;
-       
+        double myRad = 0.0;
         if(argc<2)
         {
             cerr<<"Must specify a file to load."<<endl;
@@ -157,17 +157,17 @@ int main(int argc, char *argv[])
                 width  = x;
                 
             }
-            else if(strcmp (argv[i],"-pos")==0)
+            else if(strcmp (argv[i],"-rot")==0)
             {
-                if(argc<=i+3) 
-                {
-                    cerr<<"Not enough input for resolution."<<endl;
-                    printUsage();
-                }
+                //if(argc<=i+3) 
+               // {
+                 //   cerr<<"Not enough input for resolution."<<endl;
+                   // printUsage();
+                //}
                 
-                xPos = atoi(argv[++i]);
-                yPos = atoi(argv[++i]);
-                zPos = atoi(argv[++i]);
+                myRad = atoi(argv[++i]);
+                //yPos = atoi(argv[++i]);
+                //zPos = atoi(argv[++i]);
                 //float x = 0; x = atoi(argv[++i]);
                 //float y = 0; y = atoi(argv[++i]);
                 
@@ -462,7 +462,7 @@ int main(int argc, char *argv[])
 
         eavlMatrix4x4 *myMatrix = new eavlMatrix4x4();
         myMatrix->CreateIdentity();
-        myMatrix->CreateRotateY(0.2617993878);
+        myMatrix->CreateRotateZ(3.1415926536);
 
 
         float ds_size = vrenderer->scene->getSceneMagnitude();
