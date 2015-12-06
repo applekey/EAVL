@@ -460,6 +460,11 @@ int main(int argc, char *argv[])
                                        (bbox.max.y + bbox.min.y) / 2,
                                        (bbox.max.z + bbox.min.z) / 2);
 
+        eavlMatrix4x4 *myMatrix = new eavlMatrix4x4();
+        myMatrix->CreateIdentity();
+        myMatrix->CreateRotateY(0.2617993878);
+
+
         float ds_size = vrenderer->scene->getSceneMagnitude();
 
         view.viewtype = eavlView::EAVL_VIEW_3D;
@@ -469,9 +474,23 @@ int main(int argc, char *argv[])
         view.view3d.perspective = true;
         view.view3d.at   = center;
         float fromDist  = (closeup) ? ds_size : ds_size*2;
+        cerr<<"From Dist "<<fromDist<<" ds_size "<<ds_size<<" Center "<<center[0]<<" "<<center[1]<<" "<<center[2]<<"\n";
         //-41.761740539 55.9060332268
-        view.view3d.from = eavlPoint3(xPos,yPos,zPos);//view.view3d.at + eavlVector3(fromDist,0,0);
-        view.view3d.up   = eavlVector3(0,0,1);
+        eavlPoint3 mypoint = eavlPoint3(fromDist,0,0);
+        eavlPoint3 rotPoint = myMatrix->operator*(mypoint);
+        view.view3d.from = rotPoint;//view.view3d.at + eavlVector3(fromDist,0,0);//view.view3d.at + eavlVector3(xPos,yPos,zPos); //
+
+        /*
+            Q Matt:
+            1- is camera looking at X asix? -->> view.view3d.at + eavlVector3(fromDist,0,0); just changing the X 
+            2- what is closeup?
+
+
+
+        */
+        //view.view3d.at + eavlVector3(fromDist,0,0);
+       // center = myMatrix->CreateTranslate(center);
+        view.view3d.up   = eavlVector3(0,1,0);
         view.view3d.fov  = 0.5;
         view.view3d.xpan = 0;
         view.view3d.ypan = 0;
