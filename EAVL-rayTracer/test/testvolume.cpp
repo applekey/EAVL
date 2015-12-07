@@ -18,6 +18,7 @@
 #endif
 
 #include "TF.h"
+#include "cameraRot.h"
 
 eavlDataSet *ReadWholeFile(const string &);
 void printUsage()
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
                    // printUsage();
                 //}
                 
-                myRad = atoi(argv[++i]);
+                myRad = atof(argv[++i]);
                 //yPos = atoi(argv[++i]);
                 //zPos = atoi(argv[++i]);
                 //float x = 0; x = atoi(argv[++i]);
@@ -460,60 +461,62 @@ int main(int argc, char *argv[])
                                        (bbox.max.y + bbox.min.y) / 2,
                                        (bbox.max.z + bbox.min.z) / 2);
 
-        eavlMatrix4x4 *myMatrix = new eavlMatrix4x4();
-        myMatrix->CreateIdentity();
-        myMatrix->CreateRotateZ(3.1415926536);
+eavlTransferFunction myTransfer("BuPu");
+     float pos;
+    for(int i=0; i<256; i++)
+    {
+        pos = i/256.0;
+        //cerr<<"Position "<<pos<<"\n";
+        myTransfer.AddAlphaControlPoint(pos,opac3[i]/255.0);
+    }
+        float *ctable = new float[1024 *4];
+        myTransfer.GetTransferFunction(1024, ctable);
+        vrenderer->setColorMap4f(ctable, 1024);
+        cerr<<"Set TF\n";
 
+       //for(int r=0; r<180; r++)
+       //{    
+            eavlMatrix4x4 *myMatrix = new eavlMatrix4x4();
+            myMatrix->CreateIdentity();
+            //double myRadVal = r*3.1415926535897/180.0;
+            cerr<<"Rad "<<myRad<<"\n";
+            myMatrix->CreateRotateY(myRad);
+            float ds_size = vrenderer->scene->getSceneMagnitude();
+            view.viewtype = eavlView::EAVL_VIEW_3D;
+            view.h = height;
+            view.w = width;
+            view.size = ds_size;
+            view.view3d.perspective = true;
+            view.view3d.up   = eavlVector3(0,0,1);
+            view.view3d.fov  = 0.5;
+            view.view3d.xpan = 0;
+            view.view3d.ypan = 0;
+            view.view3d.zoom = 1.0;
+            view.view3d.at   = center;
+            float fromDist  = (closeup) ? ds_size : ds_size*2;
+            //cerr<<"From Dist "<<fromDist<<" ds_size "<<ds_size<<" Center "<<center[0]<<" "<<center[1]<<" "<<center[2]<<"\n";
+            //-41.761740539 55.9060332268
+            eavlPoint3 mypoint = eavlPoint3(fromDist,0,0);
+            eavlPoint3 rotPoint = myMatrix->operator*(mypoint);
+            view.view3d.from = rotPoint;//view.view3d.at + eavlVector3(fromDist,0,0);//view.view3d.at + eavlVector3(xPos,yPos,zPos); //
 
-        float ds_size = vrenderer->scene->getSceneMagnitude();
-
-        view.viewtype = eavlView::EAVL_VIEW_3D;
-        view.h = height;
-        view.w = width;
-        view.size = ds_size;
-        view.view3d.perspective = true;
-        view.view3d.at   = center;
-        float fromDist  = (closeup) ? ds_size : ds_size*2;
-        cerr<<"From Dist "<<fromDist<<" ds_size "<<ds_size<<" Center "<<center[0]<<" "<<center[1]<<" "<<center[2]<<"\n";
-        //-41.761740539 55.9060332268
-        eavlPoint3 mypoint = eavlPoint3(fromDist,0,0);
-        eavlPoint3 rotPoint = myMatrix->operator*(mypoint);
-        view.view3d.from = rotPoint;//view.view3d.at + eavlVector3(fromDist,0,0);//view.view3d.at + eavlVector3(xPos,yPos,zPos); //
-
-        /*
-            Q Matt:
-            1- is camera looking at X asix? -->> view.view3d.at + eavlVector3(fromDist,0,0); just changing the X 
-            2- what is closeup?
-
-
-
-        */
-        //view.view3d.at + eavlVector3(fromDist,0,0);
-       // center = myMatrix->CreateTranslate(center);
-        view.view3d.up   = eavlVector3(0,1,0);
-        view.view3d.fov  = 0.5;
-        view.view3d.xpan = 0;
-        view.view3d.ypan = 0;
-        view.view3d.zoom = 1.0;
-
-        //set some defaults, this will change later
-        view.view3d.nearplane = 0;  
-        view.view3d.farplane =  1;
-
-        view.SetupMatrices();
+            //set some defaults, this will change later
+            view.view3d.nearplane = 0;  
+            view.view3d.farplane =  1;
+            view.SetupMatrices();
        
-        //extract bounding box and project
-        eavlPoint3 mins(bbox.min.x,bbox.min.y,bbox.min.z);
-        eavlPoint3 maxs(bbox.max.x,bbox.max.y,bbox.max.z);
+            //extract bounding box and project
+            eavlPoint3 mins(bbox.min.x,bbox.min.y,bbox.min.z);
+            eavlPoint3 maxs(bbox.max.x,bbox.max.y,bbox.max.z);
 
-        mins = view.V * mins;
-        maxs = view.V * maxs;
+            mins = view.V * mins;
+            maxs = view.V * maxs;
 
-         //squeeze near and far plane to extract max samples
-        view.view3d.nearplane = -maxs.z - 5; 
-        view.view3d.farplane =  -mins.z + 2; 
-        view.SetupMatrices();
-        vrenderer->setView(view);
+            //squeeze near and far plane to extract max samples
+            view.view3d.nearplane = -maxs.z - 5; 
+            view.view3d.farplane =  -mins.z + 2; 
+            view.SetupMatrices();
+            vrenderer->setView(view);
 
         cout<<"-------------Camera Params---------------"<<endl;
         cout<<"At       : "<<view.view3d.at<<endl;
@@ -530,7 +533,7 @@ int main(int argc, char *argv[])
         cout<<"vt       : "<<view.vt<<endl;
         cout<<"vb       : "<<view.vb<<endl;
         cout<<"-----------------------------------------"<<endl;
-        eavlTransferFunction myTransfer("BuPu");
+        
         //SetUpAlpha(256);
         //myTransfer.AddAlphaControlPoint(0.0,0.0);
         //myTransfer.AddAlphaControlPoint(0.25,0.0);
@@ -538,18 +541,7 @@ int main(int argc, char *argv[])
         //myTransfer.AddAlphaControlPoint(0.75,0.6);
         //myTransfer.AddAlphaControlPoint(1.0,0.0);
         //myTransfer.CreateDefaultAlpha();
-	
-	 float pos;
-    for(int i=0; i<256; i++)
-    {
-        pos = i/256.0;
-        //cerr<<"Position "<<pos<<"\n";
-        myTransfer.AddAlphaControlPoint(pos,opac1[i]/255);
-	}
-        float *ctable = new float[1024 *4];
-        myTransfer.GetTransferFunction(1024, ctable);
-        vrenderer->setColorMap4f(ctable, 1024);
-        cerr<<"Set TF\n";
+
         if(!isTest)
         {
             cerr<<"Rendering to Framebuffer\n";
@@ -559,6 +551,14 @@ int main(int argc, char *argv[])
             }
 
             cerr<<"Done Execute\n";
+            //outFilename.c_str()
+            //string imageName = "vol"+int_to_string(r);
+            //std::ostringstream stream;
+            //stream << "Mixed data, like this int: " << r;
+            //const char* result = stream.c_str();
+            //char str[1024];
+            //sprintf(str, "NewY/vol%d", r);
+            //outFilename = str;
             writeFrameBufferBMP(height, width, vrenderer->getRealFrameBuffer(), outFilename.c_str());
             cerr<<"Done writing BMP\n";
         }
@@ -566,7 +566,7 @@ int main(int argc, char *argv[])
         {
             cout<<"Starting test. Not implemented\n";
         }
-
+//}//loop over R
         eavlIntArray* samplesPerCell =  vrenderer->sumSamples;
         cerr<<"Got the samples array \n";
 	    //int temp = samplesPerCell->GetValue(0);
