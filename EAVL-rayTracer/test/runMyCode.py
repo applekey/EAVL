@@ -8,13 +8,13 @@ z = 69.782
 
 with open("cameraPos.txt") as f:
 	for line in f:
-		name = "images/NewY/vol" + str(i)
+		name = "images/NekData/X/vol" + str(i)
 		#print name 
 		i = i + 1
 		x = x + 0.5
 		z = z + 0.5 
 		myPos = str(x) + " 0 0"
-		runInst = "./testvolume -f ~/Data/hardyTet.vtk -tf enzo128Tet_camera -res 1024 1024 -fld 3  -o "+ name + " -rot "+ line
+		runInst = "./testvolume -f ~/Data/nek5000Tet.vtk-tf enzo128Tet_camera -res 1024 1024 -fld 0  -o "+ name + " -rot "+ line
 		print runInst
 		os.system(runInst)
 #degree = 15
