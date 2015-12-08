@@ -461,7 +461,7 @@ int main(int argc, char *argv[])
                                        (bbox.max.y + bbox.min.y) / 2,
                                        (bbox.max.z + bbox.min.z) / 2);
 
-eavlTransferFunction myTransfer("BuPu");
+eavlTransferFunction myTransfer("LinLhot");
      float pos;
     for(int i=0; i<256; i++)
     {
@@ -480,7 +480,7 @@ eavlTransferFunction myTransfer("BuPu");
             myMatrix->CreateIdentity();
             //double myRadVal = r*3.1415926535897/180.0;
             cerr<<"Rad "<<myRad<<"\n";
-            myMatrix->CreateRotateY(myRad);
+            myMatrix->CreateRotateX(myRad);
             float ds_size = vrenderer->scene->getSceneMagnitude();
             view.viewtype = eavlView::EAVL_VIEW_3D;
             view.h = height;
