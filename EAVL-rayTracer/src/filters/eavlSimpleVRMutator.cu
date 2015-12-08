@@ -331,10 +331,10 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-       if(tetNumofSample > CellThreshold)
-               return tuple<byte,byte,int>(255,255,tetNumofSample);
+       //if(tetNumofSample > CellThreshold)
+        //       return tuple<byte,byte,int>(255,255,tetNumofSample);
       
-       else
+       //else
         return tuple<byte,byte,int>(minPass, maxPass,0);
     }
 };
@@ -601,7 +601,7 @@ struct CompositeFunctorFB
 
         }
    	
-	cerr<<"Min Sample "<<minZsample<<"\n"; 
+//	cerr<<"Min Sample "<<minZsample<<"\n"; 
         return tuple<float,float,float,float,int>(min(1.f, color.x),  min(1.f, color.y),min(1.f, color.z),min(1.f,color.w), minZsample);
         
     }
