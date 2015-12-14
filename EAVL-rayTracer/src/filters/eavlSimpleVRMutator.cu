@@ -331,10 +331,10 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-       //if(tetNumofSample > CellThreshold)
-        //       return tuple<byte,byte,int>(255,255,tetNumofSample);
+       if(tetNumofSample > CellThreshold)
+               return tuple<byte,byte,int>(255,255,tetNumofSample);
       
-       //else
+       else
         return tuple<byte,byte,int>(minPass, maxPass,0);
     }
 };
@@ -986,7 +986,7 @@ void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int 
 	
     //cerr<<"AddOperation done\n";
 	eavlExecutor::Go();
-	cerr<<"Executor done\n";
+	//cerr<<"Executor done\n";
 }
 
 void eavlSimpleVRMutator::findCurrentPassMembers(int pass)
@@ -1050,6 +1050,9 @@ void  eavlSimpleVRMutator::Execute()
     // If we are doing parallel compositing, we just want the partial
     // composites without the background color
     //
+    //cout<<view.P<<" \n"<<view.V<<endl;
+    // view.SetupMatrices();
+    // cout<<view.P<<" \n"<<view.V<<endl;
     if(isTransparentBG) 
     {
         bgColor.c[0] =0.f; 
@@ -1228,7 +1231,7 @@ void  eavlSimpleVRMutator::Execute()
     if(verbose) passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
         
     
-    cout<<"Pass Z stride "<<passZStride<<endl;
+    //cout<<"Pass Z stride "<<passZStride<<endl;
     for(int i = 0; i < numPasses; i++)
     {
         // ins sample space
@@ -1286,7 +1289,7 @@ void  eavlSimpleVRMutator::Execute()
                                                      SampleFunctor3(scalars_array, view, nSamples, samplePtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin),passSize),
                                                      "Sampler");
             eavlExecutor::Go();
-            cerr<<"Done 1 \n";
+           // cerr<<"Done 1 \n";
 
             if(verbose) sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
@@ -1312,12 +1315,12 @@ void  eavlSimpleVRMutator::Execute()
                                                      CompositeFunctorFB( view, nSamples, samplePtr, color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin), width*height),
                                                      "Composite");
             
-	    cerr<<"Add composite op\n";
+	    //cerr<<"Add composite op\n";
 	    eavlExecutor::Go();
-	    cerr<<"Done 2 \n";
+	    //cerr<<"Done 2 \n";
             if(verbose) compositeTime += eavlTimer::Stop(tcomp,"tcomp");
 
-	    cerr<<"Done composite \n";
+	   // cerr<<"Done composite \n";
         }
     }//for each pass
     if(verbose) renderTime  = eavlTimer::Stop(ttot,"total render");
