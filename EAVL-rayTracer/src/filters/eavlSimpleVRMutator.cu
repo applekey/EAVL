@@ -681,6 +681,7 @@ struct GetNumOfPartialComp
             if(value >= 0.0f && value < 1.0f && start == 0)
                 start = 1;
         
+            /*
             int colorindex = float(ncolors-1) * value;
             float4 c = colorMap->getValue(cmap_tref, colorindex);
             //cout<<"color for value "<<value<<" is "<<color.x<<" "<<color.y<<" "<<color.z<<" "<<color.w<<"\n";
@@ -691,16 +692,14 @@ struct GetNumOfPartialComp
             color.w = c.w + color.w;
 
                   minZsample = min(minZsample, minZPixel + z); //we need the closest sample to get depth buffer 
-            if(color.w >=1 ) break;
-
+            if(color.w >=1 ) break;*/
         }
     
+        cerr<<"Num of partials in this pixel is "<<numOfPartials<<"\n";
 //  cerr<<"Min Sample "<<minZsample<<"\n"; 
         return tuple<int>(numOfPartials);
         
     }
-   
-
 };
 
 //-------------------------------------------------
