@@ -331,8 +331,8 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-       if(tetNumofSample > CellThreshold)
-               return tuple<byte,byte,int>(255,255,tetNumofSample);
+      if(tetNumofSample > CellThreshold)
+             return tuple<byte,byte,int>(255,255,tetNumofSample);
       
        else
         return tuple<byte,byte,int>(minPass, maxPass,0);
@@ -584,6 +584,7 @@ struct CompositeFunctorFB
             //printf("Coord = (%f,%f,%f) %d ",x,y,z, index3d);
             float value =  samples[index3d];//tsamples->getValue(samples_tref, index3d);// samples[index3d];
             
+            //takes init value -1 if it was a large cell 
             if (value <= 0.f || value > 1.f)
                 continue; //cerr<<"Value "<<value<<"\n";
         
@@ -603,6 +604,95 @@ struct CompositeFunctorFB
    	
 //	cerr<<"Min Sample "<<minZsample<<"\n"; 
         return tuple<float,float,float,float,int>(min(1.f, color.x),  min(1.f, color.y),min(1.f, color.z),min(1.f,color.w), minZsample);
+        
+    }
+   
+
+};
+
+//-------------------------------------------------
+
+struct GetNumOfPartialComp
+{   
+    const eavlConstTexArray<float4> *colorMap;
+    eavlView         view;
+    int              nSamples;
+    float*           samples;
+    int              h;
+    int              w;
+    int              ncolors;
+    float            mindepth;
+    float            maxdepth;
+    eavlPoint3       minComposite;
+    eavlPoint3       maxComposite;
+    int              zOffest;
+    bool             finalPass;
+    int              maxSIndx;
+    int                    minZPixel;
+
+    int              dx;
+    int              dy;
+    //int              dz;
+    int              xmin;
+    int              ymin;
+
+    CompositePartialFunctorFB( eavlView _view, int _nSamples, float* _samples, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin)
+    : view(_view), nSamples(_nSamples), samples(_samples), colorMap(_colorMap), ncolors(_ncolors), minComposite(_minComposite), maxComposite(_maxComposite), finalPass(_finalPass), maxSIndx(_maxSIndx),
+      dx(_dx), dy(_dy), xmin(_xmin), ymin(_ymin)
+    {
+        w = view.w;
+        h = view.h;
+        zOffest = _zOffset;
+        minZPixel = _minZPixel;
+    }
+ 
+    EAVL_FUNCTOR tuple<int> operator()(tuple<int> inputs )
+    {
+        int idx = get<0>(inputs);
+        int x = idx%w;
+        int y = idx/w;
+        int minZsample = get<5>(inputs);
+        int numOfPartials = 0;
+        //get the incoming color and return if the opacity is already 100%
+        float4 color= {get<1>(inputs),get<2>(inputs),get<3>(inputs),get<4>(inputs)};
+        if(color.w >= 1) return tuple<int>(color.x, color.y, color.z,color.w, minZsample);
+        //cerr<<"Before \n";
+        x-= xmin;
+        y-= ymin;
+        //pixel outside the AABB of the data set
+        if((x >= dx) || (x < 0) || ( y >= dy) || (y < 0))
+        {
+            return tuple<int>(0.f,0.f,0.f,0.f, minZsample);
+        }
+        //cerr<<"After is \n";
+        for(int z = 0 ; z < zOffest; z++)
+        {
+                //(x + view.w*(y + zSize*z));
+            int index3d = (y*dx + x)*zOffest + z;//(x + dx*(y + dy*(z))) ;//
+            
+            //printf("Coord = (%f,%f,%f) %d ",x,y,z, index3d);
+            float value =  samples[index3d];//tsamples->getValue(samples_tref, index3d);// samples[index3d];
+            
+            //takes init value -1 if it was a large cell 
+            if (value <= 0.f || value > 1.f)
+                continue; //cerr<<"Value "<<value<<"\n";
+        
+            int colorindex = float(ncolors-1) * value;
+            float4 c = colorMap->getValue(cmap_tref, colorindex);
+            //cout<<"color for value "<<value<<" is "<<color.x<<" "<<color.y<<" "<<color.z<<" "<<color.w<<"\n";
+            c.w *= (1.f - color.w); 
+            color.x = color.x  + c.x * c.w;
+            color.y = color.y  + c.y * c.w;
+            color.z = color.z  + c.z * c.w;
+            color.w = c.w + color.w;
+
+                  minZsample = min(minZsample, minZPixel + z); //we need the closest sample to get depth buffer 
+            if(color.w >=1 ) break;
+
+        }
+    
+//  cerr<<"Min Sample "<<minZsample<<"\n"; 
+        return tuple<int>(numOfPartials);
         
     }
    
@@ -1272,6 +1362,7 @@ void  eavlSimpleVRMutator::Execute()
             if(verbose) screenSpaceTime += eavlTimer::Stop(tsspace,"sample");
             int tsample;
             if(verbose) tsample = eavlTimer::Start();
+            //Call Sample function
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(currentPassMembers),
                                                         eavlIndexable<eavlFloatArray>(ssa,*i1),
                                                         eavlIndexable<eavlFloatArray>(ssa,*i2),
@@ -1301,6 +1392,7 @@ void  eavlSimpleVRMutator::Execute()
             bool finalPass = (i == numPasses - 1) ? true : false;
             int tcomp;
             if(verbose) tcomp = eavlTimer::Start();
+            //Call Compsite
              eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1333,6 +1425,7 @@ void  eavlSimpleVRMutator::Execute()
     if(verbose) cout<<"Alloc       RUNTIME: "<<allocateTime<<" Pass AVE: "<<allocateTime / (float)numPasses<<endl;
     if(verbose) cout<<"Total       RUNTIME: "<<renderTime<<endl;
     //dataWriter();
+    //composite my pixel color with background
  eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
