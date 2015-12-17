@@ -635,8 +635,8 @@ struct GetNumOfPartialComp
     //int              dz;
     int              xmin;
     int              ymin;
-
-    CompositePartialFunctorFB( eavlView _view, int _nSamples, float* _samples, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin)
+    int              start;
+    GetNumOfPartialComp( eavlView _view, int _nSamples, float* _samples, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin)
     : view(_view), nSamples(_nSamples), samples(_samples), colorMap(_colorMap), ncolors(_ncolors), minComposite(_minComposite), maxComposite(_maxComposite), finalPass(_finalPass), maxSIndx(_maxSIndx),
       dx(_dx), dy(_dy), xmin(_xmin), ymin(_ymin)
     {
@@ -646,7 +646,7 @@ struct GetNumOfPartialComp
         minZPixel = _minZPixel;
     }
  
-    EAVL_FUNCTOR tuple<int> operator()(tuple<int> inputs )
+    EAVL_FUNCTOR tuple<int> operator()(tuple<int, float, float, float, float, int> inputs )
     {
         int idx = get<0>(inputs);
         int x = idx%w;
@@ -655,14 +655,14 @@ struct GetNumOfPartialComp
         int numOfPartials = 0;
         //get the incoming color and return if the opacity is already 100%
         float4 color= {get<1>(inputs),get<2>(inputs),get<3>(inputs),get<4>(inputs)};
-        if(color.w >= 1) return tuple<int>(color.x, color.y, color.z,color.w, minZsample);
+        if(color.w >= 1) return tuple<int>(numOfPartials);
         //cerr<<"Before \n";
         x-= xmin;
         y-= ymin;
         //pixel outside the AABB of the data set
         if((x >= dx) || (x < 0) || ( y >= dy) || (y < 0))
         {
-            return tuple<int>(0.f,0.f,0.f,0.f, minZsample);
+            return tuple<int>(0.0);
         }
         //cerr<<"After is \n";
         for(int z = 0 ; z < zOffest; z++)
@@ -676,6 +676,10 @@ struct GetNumOfPartialComp
             //takes init value -1 if it was a large cell 
             if (value <= 0.f || value > 1.f)
                 continue; //cerr<<"Value "<<value<<"\n";
+            if(value < 0.0f && start == 1)
+                start = 0;
+            if(value >= 0.0f && value < 1.0f && start == 0)
+                start = 1;
         
             int colorindex = float(ncolors-1) * value;
             float4 c = colorMap->getValue(cmap_tref, colorindex);
