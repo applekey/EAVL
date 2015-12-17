@@ -1396,6 +1396,24 @@ void  eavlSimpleVRMutator::Execute()
             int tcomp;
             if(verbose) tcomp = eavlTimer::Start();
             //Call Compsite
+
+            //GetPartialComposite
+            // Output of partial composite
+            /*
+            int numOfPartials;
+            eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(samples),
+                                             eavlOpArgs(numOfPartials),
+                                             GetNumOfPartialComp(samples)numOfPartials),
+                                             "number of partials");
+            
+            int totalNumberOfPArtials;
+            eavlExecutor::AddOperation(new eavlReduceOp_1<eavlAddFunctor<int> >
+                              (numberOfPartial,
+                               totalNumberOfPArtials,
+                               eavlAddFunctor<int>()),
+                               "count total number of partials");
+
+            */
              eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
