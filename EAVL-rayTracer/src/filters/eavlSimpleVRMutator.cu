@@ -700,14 +700,14 @@ struct GetPartialComposites
 
     }
  
-    EAVL_FUNCTOR tuple<float> operator()(tuple<int, float, float, float, float, int> inputs )
+    EAVL_FUNCTOR tuple<float> operator()(tuple<int,int> inputs )
     {
         int idx = get<0>(inputs);
         int x = idx%w;
         int y = idx/w;
-        int minZsample = get<5>(inputs);
+        int minZsample = get<1>(inputs);
         //get the incoming color and return if the opacity is already 100%
-        float4 color= {get<1>(inputs),get<2>(inputs),get<3>(inputs),get<4>(inputs)};
+        float4 color= {0.0,0.0,0.0,0.0};
        // if(color.w >= 1) return tuple<float>(0.0);
         //cerr<<"Before \n";
         x-= xmin;
@@ -1648,12 +1648,12 @@ void  eavlSimpleVRMutator::Execute()
 
             cerr<<"******** Test my Functor "<<myFloatrays->GetValue(0)<<"\n";
 
-             //GetPartialComposites( eavlView _view, int _nSamples, float* _samples, PartialComposite* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin, eavlIntArray* _numOfPartials)
-            /*
-            eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
-                                                                eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)),
-                                                     GetPartialComposites( view, nSamples, samplePtr,raysPtr,offesetPartials,  color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin,numOfPartials), width*height),
-                                                     "Get Partial Composite");*/
+            //GetPartialComposites( eavlView _view, int _nSamples, float* _samples,float* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin, eavlIntArray* _numOfPartials)
+           eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
+                                                                eavlIndexable<eavlIntArray>(minSample)),
+                                                       eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)),
+                                                       GetPartialComposites( view, nSamples, samplePtr,raysPtr,offesetPartials,  color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin,numOfPartials), width*height),
+                                                       "Get Partial Composite");
             
                 
             //-----------------------------------------------
