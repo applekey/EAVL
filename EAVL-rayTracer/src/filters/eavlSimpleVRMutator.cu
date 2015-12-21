@@ -331,8 +331,8 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-     // if(tetNumofSample > CellThreshold)
-      //       return tuple<byte,byte,int>(255,255,tetNumofSample);
+     //if(tetNumofSample > CellThreshold)
+     //      return tuple<byte,byte,int>(255,255,tetNumofSample);
       
       // else
         return tuple<byte,byte,int>(minPass, maxPass,0);
@@ -695,8 +695,7 @@ struct GetPartialComposites
         h = view.h;
         zOffest = _zOffset;
         minZPixel = _minZPixel;
-        start = 0;
-        partInd = 0;
+        
 
     }
  
@@ -706,6 +705,9 @@ struct GetPartialComposites
         int x = idx%w;
         int y = idx/w;
         int minZsample = get<1>(inputs);
+        start = 0;
+        partInd = 0;
+        index=0;
         //get the incoming color and return if the opacity is already 100%
         float4 color= {0.0,0.0,0.0,0.0};
        // if(color.w >= 1) return tuple<float>(0.0);
@@ -723,7 +725,7 @@ struct GetPartialComposites
                 //(x + view.w*(y + zSize*z));
             int index3d = (y*dx + x)*zOffest + z;//(x + dx*(y + dy*(z))) ;//
             int myOffest = offesetPartials->GetValue(idx);
-            //cerr<<"3D index "<<index3d<<" 2D index "<<index2d<<"\n";
+            //cerr<<"3D index "<<index3d<<" index "<<idx<<"\n";
             //printf("Coord = (%f,%f,%f) %d ",x,y,z, index3d);
             float value =  samples[index3d];//tsamples->getValue(samples_tref, index3d);// samples[index3d];
             
@@ -735,11 +737,12 @@ struct GetPartialComposites
                     if(start ==0)
                     {
                         index = myOffest*8+partInd*8;
+                        
                         rays[index+0] = x;
                         rays[index+1] = y;
                         rays[index+2] = z;
                         start = 1;
-                    }
+                    } //if start = 0
                     int colorindex = float(ncolors-1) * value;
                     float4 c = colorMap->getValue(cmap_tref, colorindex);
                      //cout<<"color for value "<<value<<" is "<<color.x<<" "<<color.y<<" "<<color.z<<" "<<color.w<<"\n";
@@ -748,7 +751,7 @@ struct GetPartialComposites
                     color.y = color.y  + c.y * c.w;
                     color.z = color.z  + c.z * c.w;
                     color.w = c.w + color.w;
-                }
+                }// if (value >=0 )
                 
             if(value < 0.0f && start == 1)
                { start = 0;
@@ -760,7 +763,7 @@ struct GetPartialComposites
                  partInd++;
                 //add color to arrray as partial composite
                }
-
+            
                if(value >=0 && z == zOffest-1)
                {
                  start = 0;
@@ -826,7 +829,7 @@ struct GetNumOfPartialCompNum
         h = view.h;
         zOffest = _zOffset;
         minZPixel = _minZPixel;
-        start = 0;
+        
     }
  
     EAVL_FUNCTOR tuple<int> operator()(tuple< int> inputs )
@@ -835,15 +838,16 @@ struct GetNumOfPartialCompNum
         int x = idx%w;
         int y = idx/w;
         int numOfPartials = 0;
+        start = 0;
         //get the incoming color and return if the opacity is already 100%
         //cerr<<"Before \n";
         x-= xmin;
         y-= ymin;
         //pixel outside the AABB of the data set
-        if((x >= dx) || (x < 0) || ( y >= dy) || (y < 0))
-        {
-            return tuple<int>(0);
-        }
+        //if((x >= dx) || (x < 0) || ( y >= dy) || (y < 0))
+        //{
+        //    return tuple<int>(0);
+        //}
         //cerr<<"After is \n";
         for(int z = 0 ; z < zOffest; z++)
         {
@@ -856,10 +860,15 @@ struct GetNumOfPartialCompNum
             //takes init value -1 if it was a large cell 
            // if (value <= 0.f || value > 1.f)
               //  continue; //cerr<<"Value "<<value<<"\n";
+          //  if(value < 0)
+            //cerr<<"Value "<<value<<" at z "<<z<<"\n";
+
+
             if( value  >= 0.0f  && start == 0)
                 {  
                     start = 1;
                     numOfPartials++;
+                    
                 }
             if(value < 0.0f && start == 1)
                 start = 0;
@@ -878,7 +887,7 @@ struct GetNumOfPartialCompNum
             if(color.w >=1 ) break;*/
        }
     
-       // cerr<<"Num of partials in this pixel is "<<numOfPartials<<"\n";
+       //cerr<<"Num of partials in this pixel is "<<numOfPartials<<"\n";
 //  cerr<<"Min Sample "<<minZsample<<"\n"; 
         return tuple<int>(numOfPartials);
         
@@ -1581,7 +1590,7 @@ void  eavlSimpleVRMutator::Execute()
                                                      SampleFunctor3(scalars_array, view, nSamples, samplePtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin),passSize),
                                                      "Sampler");
            eavlExecutor::Go();
-           cerr<<" *********** Done 1 \n";
+           //cerr<<" *********** Done 1 \n";
 
             if(verbose) sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
@@ -1608,6 +1617,12 @@ void  eavlSimpleVRMutator::Execute()
 
             eavlExecutor::Go();
 
+            //cerr<<"Num of components "<<numOfPartials->GetNumberOfTuples()<<"\n";
+            //for(int i=0; i< numOfPartials->GetNumberOfTuples(); i++)
+               // if(numOfPartials->GetValue(i)!=0)
+                //cerr<<"Num of partials for item "<<i<<" is "<<numOfPartials->GetValue(i)<<"\n";
+
+
              totalNumberOfPArtials = new eavlIntArray("",1,1); 
              //totalNumberOfPArtials = 0;
              eavlExecutor::AddOperation(new eavlReduceOp_1<eavlAddFunctor<int> >
@@ -1617,7 +1632,8 @@ void  eavlSimpleVRMutator::Execute()
                                "count total number of partials");
 
              eavlExecutor::Go();
-             //cerr<<"Total number of partials "<<totalNumberOfPArtials->GetValue(0)<<"\n";
+             //cerr<<"Actual data size "<<dx*dy<<"\n";
+             cerr<<"Total number of partials "<<totalNumberOfPArtials->GetValue(0)<<"\n";
 
             offesetPartials = new eavlIntArray("",1,width*height);
 
@@ -1629,7 +1645,6 @@ void  eavlSimpleVRMutator::Execute()
                             
             eavlExecutor::Go();
 
-            //cerr<<"**** hello\n";
             
             // Change the composite function to produce partial composite 
             //PartialComposite myPartialsArray[numOfPartials];
@@ -1661,13 +1676,11 @@ void  eavlSimpleVRMutator::Execute()
 
             //cerr<<"******** Test my Functor "<<myFloatrays->GetValue(0)<<"\n";
 
-            //GetPartialComposites( eavlView _view, int _nSamples, float* _samples,float* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin, eavlIntArray* _numOfPartials)
-           eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
-                                                                eavlIndexable<eavlIntArray>(minSample)),
-                                                       eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)),
-                                                       GetPartialComposites( view, nSamples, samplePtr,raysPtr,offesetPartials,  color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin,numOfPartials), width*height),
-                                                       "Get Partial Composite");
 
+            eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(screenIterator),
+                                             eavlOpArgs(numOfPartials),
+                                             GetNumOfPartialCompNum( view, nSamples, samplePtr, color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin), width*height),
+                                             "number of partials");
            eavlExecutor::Go();
 
            cerr<<"Got Partials \n";
