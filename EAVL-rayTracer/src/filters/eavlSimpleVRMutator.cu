@@ -685,7 +685,7 @@ struct GetPartialComposites
     eavlIntArray* offesetPartials;
     int start;
     float* rays;
-
+    int index;
 
     GetPartialComposites( eavlView _view, int _nSamples, float* _samples,float* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin, eavlIntArray* _numOfPartials)
     : view(_view), nSamples(_nSamples), samples(_samples),rays(_rays), offesetPartials(_offesetPartials), colorMap(_colorMap), ncolors(_ncolors), minComposite(_minComposite), maxComposite(_maxComposite), finalPass(_finalPass), maxSIndx(_maxSIndx),
@@ -722,7 +722,8 @@ struct GetPartialComposites
         {
                 //(x + view.w*(y + zSize*z));
             int index3d = (y*dx + x)*zOffest + z;//(x + dx*(y + dy*(z))) ;//
-            int myOffest = offesetPartials->GetValue(index3d);
+            int myOffest = offesetPartials->GetValue(idx);
+            //cerr<<"3D index "<<index3d<<" 2D index "<<index2d<<"\n";
             //printf("Coord = (%f,%f,%f) %d ",x,y,z, index3d);
             float value =  samples[index3d];//tsamples->getValue(samples_tref, index3d);// samples[index3d];
             
@@ -733,9 +734,10 @@ struct GetPartialComposites
                 {  
                     if(start ==0)
                     {
-                        rays[myOffest+partInd+0] = x;
-                        rays[myOffest+partInd+1] = y;
-                        rays[myOffest+partInd+2] = z;
+                        index = myOffest*8+partInd*8;
+                        rays[index+0] = x;
+                        rays[index+1] = y;
+                        rays[index+2] = z;
                         start = 1;
                     }
                     int colorindex = float(ncolors-1) * value;
@@ -750,13 +752,24 @@ struct GetPartialComposites
                 
             if(value < 0.0f && start == 1)
                { start = 0;
-                 rays[myOffest+partInd+3] = z;
-                 rays[myOffest+partInd+4] = color.x;
-                 rays[myOffest+partInd+5] = color.y;
-                 rays[myOffest+partInd+6] = color.z;
-                 rays[myOffest+partInd+7] = color.w;
+                 rays[index+3] = z-1;
+                 rays[index+4] = color.x;
+                 rays[index+5] = color.y;
+                 rays[index+6] = color.z;
+                 rays[index+7] = color.w;
                  partInd++;
                 //add color to arrray as partial composite
+               }
+
+               if(value >=0 && z == zOffest-1)
+               {
+                 start = 0;
+                 rays[index+3] = z;
+                 rays[index+4] = color.x;
+                 rays[index+5] = color.y;
+                 rays[index+6] = color.z;
+                 rays[index+7] = color.w;
+                 partInd++;
                }
 
                /*
@@ -781,7 +794,6 @@ struct GetPartialComposites
 };
 
 //-------------------------------------------------
-
 struct GetNumOfPartialCompNum
 {   
     const eavlConstTexArray<float4> *colorMap;
@@ -1586,7 +1598,7 @@ void  eavlSimpleVRMutator::Execute()
             //GetPartialComposite
             // Output of partial composite
             
-            eavlIntArray* numOfPartials = new eavlIntArray("",1,width*height);
+            numOfPartials = new eavlIntArray("",1,width*height);
 
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(screenIterator),
                                              eavlOpArgs(numOfPartials),
@@ -1596,7 +1608,7 @@ void  eavlSimpleVRMutator::Execute()
 
             eavlExecutor::Go();
 
-             eavlIntArray* totalNumberOfPArtials = new eavlIntArray("",1,1); 
+             totalNumberOfPArtials = new eavlIntArray("",1,1); 
              //totalNumberOfPArtials = 0;
              eavlExecutor::AddOperation(new eavlReduceOp_1<eavlAddFunctor<int> >
                               (numOfPartials,
@@ -1607,7 +1619,7 @@ void  eavlSimpleVRMutator::Execute()
              eavlExecutor::Go();
              //cerr<<"Total number of partials "<<totalNumberOfPArtials->GetValue(0)<<"\n";
 
-           eavlIntArray* offesetPartials = new eavlIntArray("",1,width*height);
+            offesetPartials = new eavlIntArray("",1,width*height);
 
             //true = inclusive scan output counts to get output index
             eavlExecutor::AddOperation(new eavlPrefixSumOp_1(numOfPartials,
@@ -1627,7 +1639,7 @@ void  eavlSimpleVRMutator::Execute()
             //eavlPartialArray* rays ;//= new eavlPartialArray[width*height];
             int raySize = totalNumberOfPArtials->GetValue(0) * 8;
             cerr<<"Ray size "<<raySize<<"\n";
-            eavlFloatArray* myFloatrays = new eavlFloatArray("",1, raySize);
+            myFloatrays = new eavlFloatArray("",1, raySize);
             
             float* raysPtr;
              if(!cpu)
@@ -1639,14 +1651,15 @@ void  eavlSimpleVRMutator::Execute()
                 raysPtr      = (float*) myFloatrays->GetHostArray();
             }
             
+            /*
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(currentPassMembers)),
                                                      eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)),
                                                      TestMyStruct(raysPtr,offesetPartials)),
                                                      "Test Map on rays");
 
-            eavlExecutor::Go();
+            eavlExecutor::Go();*/
 
-            cerr<<"******** Test my Functor "<<myFloatrays->GetValue(0)<<"\n";
+            //cerr<<"******** Test my Functor "<<myFloatrays->GetValue(0)<<"\n";
 
             //GetPartialComposites( eavlView _view, int _nSamples, float* _samples,float* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin, eavlIntArray* _numOfPartials)
            eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
@@ -1654,6 +1667,10 @@ void  eavlSimpleVRMutator::Execute()
                                                        eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)),
                                                        GetPartialComposites( view, nSamples, samplePtr,raysPtr,offesetPartials,  color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin,numOfPartials), width*height),
                                                        "Get Partial Composite");
+
+           eavlExecutor::Go();
+
+           cerr<<"Got Partials \n";
             
                 
             //-----------------------------------------------
