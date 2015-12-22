@@ -268,9 +268,10 @@ struct PassRange
     int              CellThreshold;
     float            zmin;// need this to transate into "sample space"
     int              dz;
+    int              mysampleLCFlag;
 
-    PassRange(float4 *_xverts, float4 *_yverts,float4 *_zverts, eavlView _view, int _nSamples, int _numPasses, int _zmin, int _dz)
-    : view(_view), xverts(_xverts),yverts(_yverts),zverts(_zverts), nSamples(_nSamples), numPasses(_numPasses), zmin(_zmin), dz(_dz)
+    PassRange(float4 *_xverts, float4 *_yverts,float4 *_zverts, eavlView _view, int _nSamples, int _numPasses, int _zmin, int _dz, int _sampleLCFlag)
+    : view(_view), xverts(_xverts),yverts(_yverts),zverts(_zverts), nSamples(_nSamples), numPasses(_numPasses), zmin(_zmin), dz(_dz), mysampleLCFlag(_sampleLCFlag)
     {
         CellThreshold = 100;
         passStride = dz / numPasses;
@@ -331,11 +332,19 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-    // if(tetNumofSample > CellThreshold)
-     //      return tuple<byte,byte,int>(255,255,tetNumofSample);
+    if(mysampleLCFlag == 0)
+    { 
+      if(tetNumofSample > CellThreshold)
+       return tuple<byte,byte,int>(255,255,tetNumofSample);
       
-     //  else
+       else
         return tuple<byte,byte,int>(minPass, maxPass,0);
+    }// if sampleLCFlag == 0 which mean only sample small cells
+    else
+    {
+        return tuple<byte,byte,int>(minPass, maxPass,0);
+    }// sampleLCFlag == 1 which means sample large cells
+    
     }
 };
 
@@ -1401,6 +1410,7 @@ void  eavlSimpleVRMutator::Execute()
     if(verbose) tinit = eavlTimer::Start();
     init();
     cerr<<"After init\n";
+    cerr<<"num of tets "<<tets<<"\n";
     if(tets < 1)
     {
         //There is nothing to render. Set depth and framebuffer
@@ -1409,12 +1419,17 @@ void  eavlSimpleVRMutator::Execute()
                                              IntMemsetFunctor(nSamples+1000)), //what should this be?
                                              "clear first sample");
         eavlExecutor::Go();
+
+        cerr<<"clear first sample for tets <0 \n";
         
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(framebuffer),
                                              eavlOpArgs(framebuffer),
                                              FloatMemsetFunctor(0)),
                                              "clear Frame Buffer");
         eavlExecutor::Go();
+
+        cerr<<"clear Frame Buffer for tets <0 \n";
+
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                              eavlIndexable<eavlFloatArray>(framebuffer,*ig),
                                                              eavlIndexable<eavlFloatArray>(framebuffer,*ib),
@@ -1426,6 +1441,8 @@ void  eavlSimpleVRMutator::Execute()
                                                  CompositeBG(bgColor), height*width),
                                                  "Composite");
         eavlExecutor::Go();
+
+        cerr<<"Composite for tets <0 \n";
         return;
     }
     
@@ -1525,7 +1542,7 @@ void  eavlSimpleVRMutator::Execute()
         cerr<<"Calling PassRange\n";
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(iterator),
                                              eavlOpArgs(minPasses, maxPasses,sumSamples),
-                                             PassRange(xtet,ytet,ztet, view, nSamples, numPasses, zmin,dz)),
+                                             PassRange(xtet,ytet,ztet, view, nSamples, numPasses, zmin,dz,sampleLCFlag)),
                                              "PassFilter");
         eavlExecutor::Go(); 
     }
