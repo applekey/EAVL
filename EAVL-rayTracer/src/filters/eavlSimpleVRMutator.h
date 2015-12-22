@@ -102,6 +102,12 @@ public:
     eavlFloatArray*     ssb;
     eavlFloatArray*     ssc;
     eavlFloatArray*     ssd;
+    eavlIntArray* numOfPartials;
+    eavlIntArray* offesetPartials;
+    eavlIntArray* totalNumberOfPArtials;
+    eavlFloatArray* myFloatrays;
+    int sampleLCFlag;
+    void        setSampleLCFlag(int val){sampleLCFlag = val;}
 
   protected:
     string fieldname;
@@ -174,7 +180,7 @@ public:
     eavlArrayIndexer*   ia;
     eavlArrayIndexer*   idummy;
     eavlFloatArray**     tetSOA;
-    
+
 
     float*      colormap_raw;
     float*      tets_raw;
@@ -199,6 +205,7 @@ public:
     void        readTransferFunction(string);
     void        calcMemoryRequirements();
     void        clearSamplesArray();
+
 
 };
 #endif
