@@ -331,10 +331,10 @@ struct PassRange
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
 
-     //if(tetNumofSample > CellThreshold)
+    // if(tetNumofSample > CellThreshold)
      //      return tuple<byte,byte,int>(255,255,tetNumofSample);
       
-      // else
+     //  else
         return tuple<byte,byte,int>(minPass, maxPass,0);
     }
 };
@@ -1665,14 +1665,9 @@ void  eavlSimpleVRMutator::Execute()
             myFloatrays = new eavlFloatArray("",1, raySize);
             
             float* raysPtr;
-             if(!cpu)
-            {
-                raysPtr      = (float*) myFloatrays->GetCUDAArray();
-            }
-            else 
-            {
-                raysPtr      = (float*) myFloatrays->GetHostArray();
-            }
+             if(!cpu) raysPtr      = (float*) myFloatrays->GetCUDAArray();
+            else      raysPtr      = (float*) myFloatrays->GetHostArray();
+
             
             /*
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(currentPassMembers)),
@@ -1722,7 +1717,15 @@ void  eavlSimpleVRMutator::Execute()
             if(verbose) compositeTime += eavlTimer::Stop(tcomp,"tcomp");
 
 	   // cerr<<"Done composite \n";
-        }
+
+        }//if(passSize > 0)
+        else 
+            {   //Did this to avoid having Segmentation fault when passSize = 0
+                //Check with Matt, use the testvolume example with all LC
+                myFloatrays = new eavlFloatArray("",1, 0);
+                //To avoid having Segmentation fault when passSize = 0
+                totalNumberOfPArtials = new eavlIntArray("",1,1);
+            }
     }//for each pass
     if(verbose) renderTime  = eavlTimer::Stop(ttot,"total render");
     if(verbose) cout<<"PassFilter  RUNTIME: "<<passFilterTime<<endl;
@@ -1735,6 +1738,8 @@ void  eavlSimpleVRMutator::Execute()
     if(verbose) cout<<"Total       RUNTIME: "<<renderTime<<endl;
     //dataWriter();
     //composite my pixel color with background
+
+    cerr<<"Before composite\n";
  eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1747,6 +1752,8 @@ void  eavlSimpleVRMutator::Execute()
                                                      CompositeBG(bgColor), height*width),
                                                      "Composite");
     eavlExecutor::Go();
+
+    cerr<<"After composte \n";
 }
 
 
