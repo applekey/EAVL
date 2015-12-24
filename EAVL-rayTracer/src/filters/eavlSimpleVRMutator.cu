@@ -331,7 +331,6 @@ struct PassRange
 
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
-
     if(mysampleLCFlag == 0)
     { 
       if(tetNumofSample > CellThreshold)
@@ -520,6 +519,7 @@ struct SampleFunctor3
                     if((a >= 0.f && b <= 1.f)) 
                     {
                         samples[index3d] = lerped;
+
                         //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
                     }
 
@@ -1539,7 +1539,7 @@ void  eavlSimpleVRMutator::Execute()
     else
     {
         //find the min and max passes the tets belong to
-        cerr<<"Calling PassRange\n";
+        cerr<<"Calling PassRange with sampleLCFlag value = "<<sampleLCFlag<<"\n";
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(iterator),
                                              eavlOpArgs(minPasses, maxPasses,sumSamples),
                                              PassRange(xtet,ytet,ztet, view, nSamples, numPasses, zmin,dz,sampleLCFlag)),
@@ -1613,7 +1613,7 @@ void  eavlSimpleVRMutator::Execute()
                                                      SampleFunctor3(scalars_array, view, nSamples, samplePtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin),passSize),
                                                      "Sampler");
            eavlExecutor::Go();
-           //cerr<<" *********** Done 1 \n";
+            cerr<<"  Done Sampling \n";
 
             if(verbose) sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
@@ -1625,11 +1625,7 @@ void  eavlSimpleVRMutator::Execute()
             bool finalPass = (i == numPasses - 1) ? true : false;
             int tcomp;
             if(verbose) tcomp = eavlTimer::Start();
-            //Call Compsite
-
-            //GetPartialComposite
-            // Output of partial composite
-            
+      
             numOfPartials = new eavlIntArray("",1,width*height);
             cerr<<"**** pixel 0,0 "<<numOfPartials->GetValue(0)<<"\n";
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(screenIterator),
@@ -1671,12 +1667,6 @@ void  eavlSimpleVRMutator::Execute()
             eavlExecutor::Go();
 
             
-            // Change the composite function to produce partial composite 
-            //PartialComposite myPartialsArray[numOfPartials];
-
-            //rays = new eavlPartialComp("",1,2);
-
-            //eavlPartialArray* rays ;//= new eavlPartialArray[width*height];
             int raySize = totalNumberOfPArtials->GetValue(0) * 8;
             cerr<<"Ray size "<<raySize<<"\n";
             myFloatrays = new eavlFloatArray("",1, raySize);
@@ -1707,7 +1697,7 @@ void  eavlSimpleVRMutator::Execute()
 
            cerr<<"Got Partials \n";
             
-                
+             
             //-----------------------------------------------
             
             
@@ -1725,12 +1715,11 @@ void  eavlSimpleVRMutator::Execute()
                                                      CompositeFunctorFB( view, nSamples, samplePtr, color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin), width*height),
                                                      "Composite");
 
-        //return tuple<float,float,float,float,int>(min(1.f, color.x),  min(1.f, color.y),min(1.f, color.z),min(1.f,color.w), minZsample);
 
             
 	    //cerr<<"Add composite op\n";
 	    eavlExecutor::Go();
-	    //cerr<<"Done 2 \n";
+	    cerr<<"Done composite \n";
             if(verbose) compositeTime += eavlTimer::Stop(tcomp,"tcomp");
 
 	   // cerr<<"Done composite \n";
@@ -2085,6 +2074,11 @@ eavlByteArray * eavlSimpleVRMutator::getFrameBuffer()
 eavlFloatArray * eavlSimpleVRMutator::getRealFrameBuffer()
 {
     return framebuffer;
+}
+void eavlSimpleVRMutator::setSampleLCFlag(int val)
+{
+    sampleLCFlag = val; 
+    cerr<<"sampleLCFlag value changes to "<<sampleLCFlag<<"\n";
 }
 
 void eavlSimpleVRMutator::getImageSubsetDims(int *dims)
