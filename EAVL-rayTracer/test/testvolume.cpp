@@ -27,15 +27,15 @@ int main(int argc, char *argv[])
 
     { 
         eavlView view;
-        const string filename = "/home/roba/Data/hardyTet.vtk";
-        string outFilename = "testSampleLCflag";
+        const string filename = "/home/roba/Data/lulesh/lulesh_c4525_speed_tet.vtk";
+        string outFilename = "lulesh";
         int height = 500;
         int width = 500;
         int samples = 1000;
         int numPasses = 1;
         int meshIdx = 0;
         int  cellSetIdx = 0;
-        int  fieldIdx = 3;
+        int  fieldIdx = 1;
         float opactiyFactor = 1;
         double myRad = 0.0;
         double myZoomVal= 34;
@@ -67,8 +67,14 @@ int main(int argc, char *argv[])
         int numCellSets = data->GetNumCellSets();
         eavlCellSetExplicit* cellSet = (eavlCellSetExplicit*) data->GetCellSet(cellSetIdx);
 
+
         vector<string> fieldList = importer->GetFieldList(meshlist.at(meshIdx));
         int numfields = fieldList.size();
+        for(int i = 0; i < numfields; i++)
+            {
+                cout<<"Index "<<i<<" "<<fieldList.at(i)<<endl;
+            }
+        cout<<"Using field      : "<<fieldList.at(fieldIdx)<<endl;
         data->AddField(importer->GetField(fieldList.at(fieldIdx), meshlist.at(meshIdx), domainindex));
         //------------------------Walk the mesh and get the data--------------------------------
         int vertexIds[4];
@@ -165,8 +171,8 @@ int main(int argc, char *argv[])
             }
 
 
-            eavlFloatArray* testfloatArr = vrenderer->myFloatrays;
-            cerr<<"Partial array has "<<testfloatArr->GetNumberOfTuples()<<" components\n";
+            //eavlFloatArray* testfloatArr = vrenderer->myFloatrays;
+            //cerr<<"Partial array has "<<testfloatArr->GetNumberOfTuples()<<" components\n";
             //for(int i=0; i<testfloatArr->GetNumberOfTuples();i++)
             writeFrameBufferBMP(height, width, vrenderer->getRealFrameBuffer(), outFilename.c_str());
             cerr<<"Done writing BMP\n";
