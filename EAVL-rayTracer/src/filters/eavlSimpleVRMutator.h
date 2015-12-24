@@ -107,8 +107,7 @@ public:
     eavlIntArray* totalNumberOfPArtials;
     eavlFloatArray* myFloatrays;
     int sampleLCFlag;
-    void        setSampleLCFlag(int val){sampleLCFlag = val;}
-
+    void        setSampleLCFlag(int val);
   protected:
     string fieldname;
     string  tfFilename;
