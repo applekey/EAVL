@@ -665,7 +665,27 @@ struct TestMyStruct
 
 };
 //-------------------------------------------------
+/*
+float4 ApplyTF(float* samples, int numSamples,const eavlConstTexArray<float4> *colorMap, int ncolors)
+{
+    float4 color= {0.0,0.0,0.0,0.0};
 
+    for(int i=0;i < numSamples; i++)
+    {
+        int colorindex = float(ncolors-1) * samples[i];
+        float4 c = colorMap->getValue(cmap_tref, colorindex);
+        c.w *= (1.f - color.w); 
+        color.x = color.x  + c.x * c.w;
+        color.y = color.y  + c.y * c.w;
+        color.z = color.z  + c.z * c.w;
+        color.w = c.w + color.w;
+
+        if(color.w >= 0.99)return color;
+    }
+
+    return color;
+}*/
+//-------------------------------------------------
 struct GetPartialComposites
 {   
     const eavlConstTexArray<float4> *colorMap;
@@ -717,10 +737,12 @@ struct GetPartialComposites
         int origY = y;
         int minZsample = get<1>(inputs);
         int start = 0;
+        int end =0;
         int partInd = 0;
         int index=0;
         //get the incoming color and return if the opacity is already 100%
         float4 color= {0.0,0.0,0.0,0.0};
+        float4 pc = {0.0,0.0,0.0,0.0};
        // if(color.w >= 1) return tuple<float>(0.0);
         //cerr<<"Before \n";
         x-= xmin;
@@ -745,7 +767,7 @@ struct GetPartialComposites
             //takes init value -1 if it was a large cell 
             //if (value <= 0.f || value > 1.f)
             //    continue; //cerr<<"Value "<<value<<"\n";
-            if( value  >= 0.0f)
+            if( value  > 0.0f)
                 {  
                     if(start ==0)
                     {
@@ -758,35 +780,75 @@ struct GetPartialComposites
                     } //if start = 0
                     int colorindex = float(ncolors-1) * value;
                     float4 c = colorMap->getValue(cmap_tref, colorindex);
-                     //cout<<"color for value "<<value<<" is "<<color.x<<" "<<color.y<<" "<<color.z<<" "<<color.w<<"\n";
-                    c.w *= (1.f - color.w); 
-                    color.x = color.x  + c.x * c.w;
-                    color.y = color.y  + c.y * c.w;
-                    color.z = color.z  + c.z * c.w;
-                    color.w = c.w + color.w;
+                    //cout<<"color for value "<<value<<" is "<<color.x<<" "<<color.y<<" "<<color.z<<" "<<color.w<<"\n";
+                    //if(color.w < 0.95 )
+                   //{c.w *= (1.f - color.w); 
+                    color.x = c.x;
+                    color.y = c.y;
+                    color.z = c.z;
+                    color.w = c.w;
+
+                    if(pc.w< 0.95)
+                    {
+                        //c.w *= (1.f - pc.w); 
+                        pc.x = pc.x  + (1-pc.w) *c.x * c.w;
+                        pc.y = pc.y  + (1-pc.w) *c.y * c.w;
+                        pc.z = pc.z  + (1-pc.w) *c.z * c.w;
+                        pc.w = pc.w  + (1-pc.w) *c.w;
+
+                        
+                    }//pc.w < 0.95
+
                 }// if (value >=0 )
                 
             if(value < 0.0f && start == 1)
                { start = 0;
+                 end = 1;
                  rays[index+3] = z-1;
+                 /*
                  rays[index+4] = color.x;
                  rays[index+5] = color.y;
                  rays[index+6] = color.z;
-                 rays[index+7] = color.w;
+                 rays[index+7] = color.w;*/
                  partInd++;
                 //add color to arrray as partial composite
                }
-            
                if(value >=0 && z == zOffest-1)
                {
                  start = 0;
+                 end = 1;
                  rays[index+3] = z;
+                 /*
+                 rays[index+4] = color.x;
+                 rays[index+5] = color.y;
+                 rays[index+6] = color.z;
+                 rays[index+7] = color.w;*/
+                 partInd++;
+               }
+
+               if(end == 1)
+               {
+               if(rays[index+2] == rays[index+3])
+               {
                  rays[index+4] = color.x;
                  rays[index+5] = color.y;
                  rays[index+6] = color.z;
                  rays[index+7] = color.w;
-                 partInd++;
+                 end = 0;
                }
+               
+               else
+               {
+                //float4 pc = ApplyTF(partialsFloat, numOfsampperPart,colorMap,ncolors);
+                 rays[index+4] = pc.x;
+                 rays[index+5] = pc.y;
+                 rays[index+6] = pc.z;
+                 rays[index+7] = pc.w;
+                 end = 0;
+               }
+
+              }//if end ==1
+
 
                //if(origX == 0 && origY == 0)
                 //cerr<<"Pixel 0 0 has "<<partInd<<"\n";
@@ -803,7 +865,7 @@ struct GetPartialComposites
                   minZsample = min(minZsample, minZPixel + z); //we need the closest sample to get depth buffer 
             if(color.w >=1 ) break;*/
 
-       }
+       }// for Z
         //cerr<<"Color "<<color.x<<" "<<color.y<<" "<<color.z<<" "<<color.w<<"\n";
 //  cerr<<"Min Sample "<<minZsample<<"\n"; 
         //return tuple<float,float,float,float,int>(min(1.f, color.x),  min(1.f, color.y),min(1.f, color.z),min(1.f,color.w), minZsample);
