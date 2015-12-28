@@ -788,7 +788,7 @@ struct GetPartialComposites
                     color.z = c.z;
                     color.w = c.w;
 
-                    if(pc.w< 0.95)
+                    if(pc.w< 1)
                     {
                         //c.w *= (1.f - pc.w); 
                         pc.x = pc.x  + (1-pc.w) *c.x * c.w;
@@ -828,12 +828,23 @@ struct GetPartialComposites
 
                if(end == 1)
                {
+                 rays[index+4] = pc.x;
+                 rays[index+5] = pc.y;
+                 rays[index+6] = pc.z;
+                 rays[index+7] = pc.w;
+                 end = 0;
+                 /*
                if(rays[index+2] == rays[index+3])
                {
-                 rays[index+4] = color.x;
-                 rays[index+5] = color.y;
-                 rays[index+6] = color.z;
-                 rays[index+7] = color.w;
+                 
+                 //rays[index+4] = color.x;
+                 //rays[index+5] = color.y;
+                 //rays[index+6] = color.z;
+                 //rays[index+7] = color.w;
+                 rays[index+4] = pc.x;
+                 rays[index+5] = pc.y;
+                 rays[index+6] = pc.z;
+                 rays[index+7] = pc.w;
                  end = 0;
                }
                
@@ -845,7 +856,7 @@ struct GetPartialComposites
                  rays[index+6] = pc.z;
                  rays[index+7] = pc.w;
                  end = 0;
-               }
+               }*/
 
               }//if end ==1
 
