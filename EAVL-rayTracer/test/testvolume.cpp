@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
         int  cellSetIdx = 0;
         int  fieldIdx = 1;
         float opactiyFactor = 1;
-        double myRad = 0.0;
-        double myZoomVal= 34;
+        double myRad = 0.0;//0.2617993878;
+        double myZoomVal= 1.94856;//34;
         bool verbose = false;
      
         eavlExecutor::SetExecutionMode(eavlExecutor::ForceCPU);
@@ -113,12 +113,12 @@ int main(int argc, char *argv[])
                                        (bbox.max.z + bbox.min.z) / 2);
 
     cerr<<"Set TF\n";
-    eavlTransferFunction myTransfer("LinLhot");
+    eavlTransferFunction myTransfer("IsoL");
      float pos;
     for(int i=0; i<256; i++)
     {
         pos = i/256.0;
-        myTransfer.AddAlphaControlPoint(pos,opac3[i]/255.0);
+        myTransfer.AddAlphaControlPoint(pos,opac4[i]/255.0);
     }
 
         float *ctable = new float[1024 *4];
@@ -133,19 +133,23 @@ int main(int argc, char *argv[])
             view.w = width;
             float ds_size = vrenderer->scene->getSceneMagnitude();
             view.size = ds_size;
+            cerr<<"ds_size "<<ds_size<<"\n";
             view.view3d.perspective = true;
-            view.view3d.up   = eavlVector3(0,0,1);
+            //-0.01640186701923537 -0.03843155483139624 0.9991266157757609
+            view.view3d.up   = eavlVector3(0,-1,0);
             view.view3d.fov  = 0.5;
             view.view3d.xpan = 0;
             view.view3d.ypan = 0;
             view.view3d.zoom = 1.0;
             view.view3d.at   = center;
+            cerr<<"Center "<<center[0]<<" "<<center[1]<<" "<<center[2]<<"\n";
             cerr<<"Zoom Val"<<myZoomVal<<"\n";
-            float fromDist  =  myZoomVal;
-            myMatrix->CreateRotateX(myRad);
-            eavlPoint3 mypoint = eavlPoint3(fromDist,0,fromDist);
+            float fromDist  = 5.0;//myZoomVal/2;
+            cerr<<"fromDist "<<fromDist<<"\n";
+            myMatrix->CreateRotateZ(myRad);
+            eavlPoint3 mypoint = view.view3d.at+ eavlVector3(-fromDist/2,0,-fromDist);//eavlPoint3(fromDist,0,fromDist);
             eavlPoint3 rotPoint = myMatrix->operator*(mypoint);
-            view.view3d.from = rotPoint;
+            view.view3d.from =  rotPoint;
             view.view3d.nearplane = 0;  
             view.view3d.farplane =  1;
             view.SetupMatrices();
@@ -161,7 +165,7 @@ int main(int argc, char *argv[])
             view.view3d.nearplane = -maxs.z - 5; 
             view.view3d.farplane =  -mins.z + 2; 
             view.SetupMatrices();
-            cout<<view.P<<" \n"<<view.V<<endl;
+            //cout<<view.P<<" \n"<<view.V<<endl;
             vrenderer->setView(view);
 
           cerr<<"Rendering to Framebuffer\n";
