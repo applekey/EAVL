@@ -481,7 +481,8 @@ struct SampleFunctor3
         int zmax = floor(maxe[2]);
 
         float4 s = scalars->getValue(scalars_tref, tet);
-
+        //cerr<<" X "<<xmin<<" to "<<xmax<<"\n";
+        //cerr<<" Y "<<ymin<<" to "<<ymax<<"\n";
         for(int x = xmin; x <= xmax; ++x)
         {
             for(int y = ymin; y <= ymax; ++y)
@@ -519,12 +520,17 @@ struct SampleFunctor3
                     if((a >= 0.f && b <= 1.f)) 
                     {
                         samples[index3d] = lerped;
-
+                       if(x == 359 && y == 282)
+                        cerr<<"Cell "<<tet<<"\n";
+                        //cerr<<"Z "<<z<<" value "<<samples[index3d]<<"\n";
+                      // cerr<<"HEEEEEELLO\n";
                         //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
                     }
+                     
+                   
 
                 }//z
-            }//y
+            }//y                                                                                                                                                                                           
         }//x
 
         return tuple<float>(0.f);
@@ -773,6 +779,7 @@ struct GetPartialComposites
                     {
                         index = myOffest*8+partInd*8;
                         
+                        //rays[index+0] = idx;
                         rays[index+0] = origX;
                         rays[index+1] = origY;
                         rays[index+2] = z;
@@ -826,8 +833,8 @@ struct GetPartialComposites
                  partInd++;
                }
 
-               if(end == 1)
-               {
+             //  if(end == 1)
+               //{
                  rays[index+4] = pc.x;
                  rays[index+5] = pc.y;
                  rays[index+6] = pc.z;
@@ -858,7 +865,7 @@ struct GetPartialComposites
                  end = 0;
                }*/
 
-              }//if end ==1
+             // }//if end ==1
 
 
                //if(origX == 0 && origY == 0)
@@ -1174,7 +1181,7 @@ void printGPUMemUsage()
 
 void eavlSimpleVRMutator::clearSamplesArray()
 {
-    cerr<<"In function clearSamplesArray\n";
+    //cerr<<"In function clearSamplesArray\n";
     int clearValue = 0xbf800000; //-1 float
     size_t bytes = pixelsPerPass * sizeof(float);
     if(!cpu)
@@ -1429,7 +1436,7 @@ void  eavlSimpleVRMutator::Execute()
     //cout<<view.P<<" \n"<<view.V<<endl;
     // view.SetupMatrices();
     // cout<<view.P<<" \n"<<view.V<<endl;
-    cerr<<"IN execute\n";
+    //cerr<<"IN execute\n";
     if(isTransparentBG) 
     {
         bgColor.c[0] =0.f; 
@@ -1456,8 +1463,8 @@ void  eavlSimpleVRMutator::Execute()
         geomDirty = true;
         numTets = tets;
     }
-    //if(verbose) 
-        cout<<"Num Tets = "<<numTets<<endl;
+    if(verbose) 
+       cout<<"Num Tets = "<<numTets<<endl;
 
     // Pixels extents are used to skip empty space in compositing
     // and for allocating sample buffer
@@ -1473,17 +1480,17 @@ void  eavlSimpleVRMutator::Execute()
     int new_dx = maxs.x - mins.x;
     int new_dy = maxs.y - mins.y;
     int new_dz = maxs.z - mins.z;
-    cerr<<"Before if sizeDirty\n";
+    //cerr<<"Before if sizeDirty\n";
     if(new_dx != dx || new_dy != dy || new_dz != dz) sizeDirty = true;
     dx = new_dx;
     dy = new_dy;
     dz = new_dz;
-    cerr<<"After sizeDirty\n";
+    //cerr<<"After sizeDirty\n";
     int tinit;
     if(verbose) tinit = eavlTimer::Start();
     init();
-    cerr<<"After init\n";
-    cerr<<"num of tets "<<tets<<"\n";
+    //cerr<<"After init\n";
+    //cerr<<"num of tets "<<tets<<"\n";
     if(tets < 1)
     {
         //There is nothing to render. Set depth and framebuffer
@@ -1493,7 +1500,7 @@ void  eavlSimpleVRMutator::Execute()
                                              "clear first sample");
         eavlExecutor::Go();
 
-        cerr<<"clear first sample for tets <0 \n";
+        //cerr<<"clear first sample for tets <0 \n";
         
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(framebuffer),
                                              eavlOpArgs(framebuffer),
@@ -1501,7 +1508,7 @@ void  eavlSimpleVRMutator::Execute()
                                              "clear Frame Buffer");
         eavlExecutor::Go();
 
-        cerr<<"clear Frame Buffer for tets <0 \n";
+        //cerr<<"clear Frame Buffer for tets <0 \n";
 
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                              eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1515,12 +1522,12 @@ void  eavlSimpleVRMutator::Execute()
                                                  "Composite");
         eavlExecutor::Go();
 
-        cerr<<"Composite for tets <0 \n";
+        //cerr<<"Composite for tets <0 \n";
         return;
     }
     
     
-    cerr<<"Before cpu gpu stuff \n";
+    //cerr<<"Before cpu gpu stuff \n";
     if(!cpu)
     {
         //cout<<"Getting cuda array for tets."<<endl;
@@ -1568,7 +1575,7 @@ void  eavlSimpleVRMutator::Execute()
     int tclear;
     if(verbose) tclear = eavlTimer::Start();
 
-    cerr<<"Bfore adding operations \n";
+    //cerr<<"Bfore adding operations \n";
     eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(framebuffer),
                                              eavlOpArgs(framebuffer),
                                              FloatMemsetFunctor(0)),
@@ -1624,7 +1631,7 @@ void  eavlSimpleVRMutator::Execute()
     if(verbose) passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
         
     
-    cout<<"Pass Z stride "<<passZStride<<endl;
+    //cout<<"Pass Z stride "<<passZStride<<endl;
     for(int i = 0; i < numPasses; i++)
     {
         // ins sample space
@@ -1641,7 +1648,7 @@ void  eavlSimpleVRMutator::Execute()
             return;
         }
         
-        cerr<<"Pass size "<<passSize<<"\n";
+        //cerr<<"Pass size "<<passSize<<"\n";
         
         if(passSize > 0)
         {
@@ -1649,7 +1656,7 @@ void  eavlSimpleVRMutator::Execute()
             int tclearS;
             if(verbose) tclearS = eavlTimer::Start();
             if (i != 0) clearSamplesArray();  //this is a win on CPU for sure, gpu seems to be the same
-            cerr<<"clearSamplesArray is done\n";
+            //cerr<<"clearSamplesArray is done\n";
             // eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(samples),
             //                                          eavlOpArgs(samples),
             //                                          FloatMemsetFunctor(-1.f)),
@@ -1660,10 +1667,10 @@ void  eavlSimpleVRMutator::Execute()
             int tsspace;
             if(verbose) tsspace = eavlTimer::Start();
             
-            cerr<<"Before screen space transformation\n";
+           // cerr<<"Before screen space transformation\n";
             performScreenSpaceTransform(currentPassMembers,passSize);
 
-	        cerr<<"Done Screen Space Transform\n";
+	        //cerr<<"Done Screen Space Transform\n";
     
             if(verbose) screenSpaceTime += eavlTimer::Stop(tsspace,"sample");
             int tsample;
@@ -1686,7 +1693,8 @@ void  eavlSimpleVRMutator::Execute()
                                                      SampleFunctor3(scalars_array, view, nSamples, samplePtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin),passSize),
                                                      "Sampler");
            eavlExecutor::Go();
-            cerr<<"  Done Sampling \n";
+            //cerr<<"  Done Sampling \n";
+
 
             if(verbose) sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
@@ -1700,7 +1708,7 @@ void  eavlSimpleVRMutator::Execute()
             if(verbose) tcomp = eavlTimer::Start();
       
             numOfPartials = new eavlIntArray("",1,width*height);
-            cerr<<"**** pixel 0,0 "<<numOfPartials->GetValue(0)<<"\n";
+            //cerr<<"**** pixel 0,0 "<<numOfPartials->GetValue(0)<<"\n";
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(screenIterator),
                                              eavlOpArgs(numOfPartials),
                                              GetNumOfPartialCompNum( view, nSamples, samplePtr, color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin), width*height),
@@ -1725,7 +1733,7 @@ void  eavlSimpleVRMutator::Execute()
 
              eavlExecutor::Go();
              //cerr<<"Actual data size "<<dx*dy<<"\n";
-             cerr<<"Total number of partials "<<totalNumberOfPArtials->GetValue(0)<<"\n";
+             //cerr<<"Total number of partials "<<totalNumberOfPArtials->GetValue(0)<<"\n";
 
             offesetPartials = new eavlIntArray("",1,width*height);
 
@@ -1741,7 +1749,7 @@ void  eavlSimpleVRMutator::Execute()
 
             
             int raySize = totalNumberOfPArtials->GetValue(0) * 8;
-            cerr<<"Ray size "<<raySize<<"\n";
+            //cerr<<"Ray size "<<raySize<<"\n";
             myFloatrays = new eavlFloatArray("",1, raySize);
             
             float* raysPtr;
@@ -1768,7 +1776,7 @@ void  eavlSimpleVRMutator::Execute()
 
             eavlExecutor::Go();
 
-           cerr<<"Got Partials \n";
+           //cerr<<"Got Partials \n";
             
              
             //-----------------------------------------------
@@ -1792,7 +1800,7 @@ void  eavlSimpleVRMutator::Execute()
             
 	    //cerr<<"Add composite op\n";
 	    eavlExecutor::Go();
-	    cerr<<"Done composite \n";
+	    //cerr<<"Done composite \n";
             if(verbose) compositeTime += eavlTimer::Stop(tcomp,"tcomp");
 
 	   // cerr<<"Done composite \n";
@@ -1808,7 +1816,7 @@ void  eavlSimpleVRMutator::Execute()
     }//for each pass
     if(verbose) renderTime  = eavlTimer::Stop(ttot,"total render");
     if(verbose) cout<<"PassFilter  RUNTIME: "<<passFilterTime<<endl;
-    cout<<"Clear Sample  RUNTIME: "<<clearTime<<endl;
+   // cout<<"Clear Sample  RUNTIME: "<<clearTime<<endl;
     if(verbose) cout<<"PassSel     RUNTIME: "<<passSelectionTime<<" Pass AVE: "<<passSelectionTime / (float)numPasses<<endl;
     if(verbose) cout<<"ScreenSpace RUNTIME: "<<screenSpaceTime<<" Pass AVE: "<<screenSpaceTime / (float)numPasses<<endl;
     if(verbose) cout<<"Sample      RUNTIME: "<<sampleTime<<" Pass AVE: "<<sampleTime / (float)numPasses<<endl;
@@ -1818,7 +1826,7 @@ void  eavlSimpleVRMutator::Execute()
     //dataWriter();
     //composite my pixel color with background
 
-    cerr<<"Before composite\n";
+    //cerr<<"Before composite\n";
  eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1832,7 +1840,7 @@ void  eavlSimpleVRMutator::Execute()
                                                      "Composite");
     eavlExecutor::Go();
 
-    cerr<<"After composte \n";
+    //cerr<<"After composte \n";
 }
 
 
