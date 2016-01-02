@@ -1337,11 +1337,11 @@ struct PassThreshFunctor
 
 void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int number)
 {
-    //cerr<<"IN PerformScreen\n";
+    cerr<<"IN PerformScreen\n";
 	int numPassMembers = tetIds->GetNumberOfTuples();
     int outputArraySize = ssa->GetNumberOfTuples() / 3;
    
-  // cerr<<"Number of Big Cells "<<numPassMembers<<"\n"; 
+  //cerr<<"Number of Big Cells "<<numPassMembers<<"\n"; 
 
    if(numPassMembers > outputArraySize)
     {
@@ -1367,11 +1367,11 @@ void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int 
                                                     "Screen Space transform");
     
 	
-    //cerr<<"AddOperation done\n";
+    cerr<<"Screen Space transform done\n";
 	eavlExecutor::Go();
 	//cerr<<"Executor done\n";
 }
-
+//-------------------------------------------------
 void eavlSimpleVRMutator::findCurrentPassMembers(int pass)
 {
     int passtime;
