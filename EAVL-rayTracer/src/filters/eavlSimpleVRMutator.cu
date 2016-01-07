@@ -520,8 +520,8 @@ struct SampleFunctor3
                     if((a >= 0.f && b <= 1.f)) 
                     {
                         samples[index3d] = lerped;
-                       if(x == 359 && y == 282)
-                        cerr<<"Cell "<<tet<<"\n";
+                       //if(x == 359 && y == 282)
+                        //cerr<<"Cell "<<tet<<"\n";
                         //cerr<<"Z "<<z<<" value "<<samples[index3d]<<"\n";
                       // cerr<<"HEEEEEELLO\n";
                         //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
@@ -1337,7 +1337,7 @@ struct PassThreshFunctor
 
 void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int number)
 {
-    cerr<<"IN PerformScreen\n";
+    //cerr<<"IN PerformScreen\n";
 	int numPassMembers = tetIds->GetNumberOfTuples();
     int outputArraySize = ssa->GetNumberOfTuples() / 3;
    
@@ -1367,7 +1367,7 @@ void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int 
                                                     "Screen Space transform");
     
 	
-    cerr<<"Screen Space transform done\n";
+    //cerr<<"Screen Space transform done\n";
 	eavlExecutor::Go();
 	//cerr<<"Executor done\n";
 }
