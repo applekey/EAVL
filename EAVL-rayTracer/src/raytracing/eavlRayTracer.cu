@@ -47,7 +47,7 @@ eavlRayTracer::eavlRayTracer()
 	eavlMaterials = NULL;
 
 
-	  redIndexer   = new eavlArrayIndexer(4,0);
+	redIndexer   = new eavlArrayIndexer(4,0);
     greenIndexer = new eavlArrayIndexer(4,1);
     blueIndexer  = new eavlArrayIndexer(4,2);
     alphaIndexer = new eavlArrayIndexer(4,3);

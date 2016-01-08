@@ -78,6 +78,7 @@ class eavlSimpleVRMutator : public eavlMutator
         opacityFactor = factor;
     }
 
+    //returns actual cooordinates of tet
     eavlFloatArray** getTetSOA()
     {
         return tetSOA;
