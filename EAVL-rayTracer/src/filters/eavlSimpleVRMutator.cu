@@ -1463,7 +1463,7 @@ void  eavlSimpleVRMutator::Execute()
         geomDirty = true;
         numTets = tets;
     }
-    if(verbose) 
+   // if(verbose) 
        cout<<"Num Tets = "<<numTets<<endl;
 
     // Pixels extents are used to skip empty space in compositing
