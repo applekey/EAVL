@@ -27,20 +27,22 @@ int main(int argc, char *argv[])
 
     { 
         eavlView view;
-        const string filename = "/home/roba/Data/lulesh/lulesh_c4525_speed_tet.vtk";
-        string outFilename = "lulesh";
+        const string filename = "/home/roba/Data/DS_Data/hank_noise_tet.0.vtk";
+        string outFilename = "noise0";
         int height = 500;
         int width = 500;
         int samples = 1000;
         int numPasses = 1;
         int meshIdx = 0;
         int  cellSetIdx = 0;
-        int  fieldIdx = 1;
+        int  fieldIdx = 2;
         float opactiyFactor = 1;
         double myRad = 0.0;//0.2617993878;
-        double myZoomVal= 1.94856;//34;
+        //double myZoomVal= 1.94856;//34;
         bool verbose = false;
-     
+        float maxVal, minVal; 
+        maxVal = -1;
+        minVal = 10000;
         eavlExecutor::SetExecutionMode(eavlExecutor::ForceCPU);
         eavlSimpleVRMutator *vrenderer= new eavlSimpleVRMutator();
         vrenderer->setVerbose(verbose);
@@ -97,11 +99,19 @@ int main(int argc, char *argv[])
                 v[j].y = ((eavlFloatArray*)(data->GetField("ycoord")->GetArray()))->GetValue(vertexIds[j]);
                 v[j].z = ((eavlFloatArray*)(data->GetField("zcoord")->GetArray()))->GetValue(vertexIds[j]);
                 scalars[j] = ((eavlFloatArray*)(data->GetField(fieldList.at(fieldIdx))->GetArray()))->GetValue(vertexIds[j]);
+                
+                if(scalars[j]>maxVal)
+                    maxVal = scalars[j];
+                if(scalars[j]<minVal)
+                    minVal = scalars[j];
+
+
             }// adding tet
 
             vrenderer->scene->addTet(v[0], v[1], v[2], v[3], scalars[0], scalars[1], scalars[2], scalars[3]);
         }// for cell
-        
+        cerr<<"Max value "<<maxVal<<" min value "<<minVal<<"\n";
+
         //data->PrintSummary(cout);
         
 
@@ -118,38 +128,37 @@ int main(int argc, char *argv[])
     for(int i=0; i<256; i++)
     {
         pos = i/256.0;
-        myTransfer.AddAlphaControlPoint(pos,opac4[i]/255.0);
+        myTransfer.AddAlphaControlPoint(pos,opac3[i]/255.0);
     }
 
         float *ctable = new float[1024 *4];
         myTransfer.GetTransferFunction(1024, ctable);
         vrenderer->setColorMap4f(ctable, 1024);
         
-    
+            double myZoomVal= 34;
+
             eavlMatrix4x4 *myMatrix = new eavlMatrix4x4();
             myMatrix->CreateIdentity();
             view.viewtype = eavlView::EAVL_VIEW_3D;
             view.h = height;
             view.w = width;
             float ds_size = vrenderer->scene->getSceneMagnitude();
+            cerr<<"Size "<<ds_size<<"\n";
             view.size = ds_size;
-            cerr<<"ds_size "<<ds_size<<"\n";
             view.view3d.perspective = true;
-            //-0.01640186701923537 -0.03843155483139624 0.9991266157757609
-            view.view3d.up   = eavlVector3(0,-1,0);
+            view.view3d.up   = eavlVector3(0,0,1);
             view.view3d.fov  = 0.5;
             view.view3d.xpan = 0;
             view.view3d.ypan = 0;
             view.view3d.zoom = 1.0;
             view.view3d.at   = center;
-            cerr<<"Center "<<center[0]<<" "<<center[1]<<" "<<center[2]<<"\n";
-            cerr<<"Zoom Val"<<myZoomVal<<"\n";
-            float fromDist  = 5.0;//myZoomVal/2;
-            cerr<<"fromDist "<<fromDist<<"\n";
-            myMatrix->CreateRotateZ(myRad);
-            eavlPoint3 mypoint = view.view3d.at+ eavlVector3(-fromDist/2,0,-fromDist);//eavlPoint3(fromDist,0,fromDist);
+            //cerr<<"Center "<<center[0]<<" "<<center[1]<<" "<<center[2]<<"\n";
+            //cerr<<"Zoom Val"<<myZoomVal<<"\n";
+            float fromDist  =  myZoomVal;
+            myMatrix->CreateRotateX(myRad);
+            eavlPoint3 mypoint = eavlPoint3(fromDist,0,fromDist);
             eavlPoint3 rotPoint = myMatrix->operator*(mypoint);
-            view.view3d.from =  rotPoint;
+            view.view3d.from = rotPoint;
             view.view3d.nearplane = 0;  
             view.view3d.farplane =  1;
             view.SetupMatrices();
@@ -165,7 +174,7 @@ int main(int argc, char *argv[])
             view.view3d.nearplane = -maxs.z - 5; 
             view.view3d.farplane =  -mins.z + 2; 
             view.SetupMatrices();
-            //cout<<view.P<<" \n"<<view.V<<endl;
+            cout<<view.P<<" \n"<<view.V<<endl;
             vrenderer->setView(view);
 
           cerr<<"Rendering to Framebuffer\n";
