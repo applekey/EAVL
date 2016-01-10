@@ -118,8 +118,8 @@ EAVL_HOSTONLY inline eavlFloatArray** eavlVRScene::getEavlTetPtrs()
 EAVL_HOSTONLY inline eavlFloatArray* eavlVRScene::getScalarPtr()
 {
 	int size = scalars->GetNumberOfTuples();
-	cout<<"Size "<<size<<endl;
-	cout<<"Max min "<<maxScalar<<" "<<minScalar<<endl;
+	//cout<<"Size "<<size<<endl;
+	//cout<<"Max min "<<maxScalar<<" "<<minScalar<<endl;
 	for(int i = 0; i < size;++i)
 	{
 		float scalar = scalars->GetValue(i);
