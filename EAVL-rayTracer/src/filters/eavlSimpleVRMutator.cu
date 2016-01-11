@@ -812,11 +812,11 @@ struct GetPartialComposites
                { start = 0;
                  end = 1;
                  rays[index+3] = z-1;
-                 /*
+                 
                  rays[index+4] = color.x;
                  rays[index+5] = color.y;
                  rays[index+6] = color.z;
-                 rays[index+7] = color.w;*/
+                 rays[index+7] = color.w;
                  partInd++;
                 //add color to arrray as partial composite
                }
@@ -1270,7 +1270,7 @@ void eavlSimpleVRMutator::init()
         {
             passCountEstimate = maxPassSize + (int)(maxPassSize * .1); //add a little padding here.
             passNumDirty = true;
-            cout<<"Ajdusting Pass size"<<endl;
+            //cout<<"Ajdusting Pass size"<<endl;
         }
     }
 
@@ -1463,7 +1463,7 @@ void  eavlSimpleVRMutator::Execute()
         geomDirty = true;
         numTets = tets;
     }
-   // if(verbose) 
+   if(verbose) 
        cout<<"Num Tets = "<<numTets<<endl;
 
     // Pixels extents are used to skip empty space in compositing
@@ -1619,7 +1619,7 @@ void  eavlSimpleVRMutator::Execute()
     else
     {
         //find the min and max passes the tets belong to
-        cerr<<"Calling PassRange with sampleLCFlag value = "<<sampleLCFlag<<"\n";
+        //cerr<<"Calling PassRange with sampleLCFlag value = "<<sampleLCFlag<<"\n";
         eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(iterator),
                                              eavlOpArgs(minPasses, maxPasses,sumSamples),
                                              PassRange(xtet,ytet,ztet, view, nSamples, numPasses, zmin,dz,sampleLCFlag)),
@@ -2159,7 +2159,7 @@ eavlFloatArray * eavlSimpleVRMutator::getRealFrameBuffer()
 void eavlSimpleVRMutator::setSampleLCFlag(int val)
 {
     sampleLCFlag = val; 
-    cerr<<"sampleLCFlag value changes to "<<sampleLCFlag<<"\n";
+    //cerr<<"sampleLCFlag value changes to "<<sampleLCFlag<<"\n";
 }
 
 void eavlSimpleVRMutator::getImageSubsetDims(int *dims)
