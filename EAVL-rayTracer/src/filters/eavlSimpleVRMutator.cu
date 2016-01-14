@@ -780,9 +780,9 @@ struct GetPartialComposites
             //takes init value -1 if it was a large cell 
             //if (value <= 0.f || value > 1.f)
             //    continue; //cerr<<"Value "<<value<<"\n";
-
-             if(origX == 145 && origY == 300 && z == 12)
-                cerr<<"value for z 12"<<z<<" val "<<value<<" dx "<<dx<<" x "<<x<<" y "<<y<<"\n";
+            //z + zmin
+             //if(origX == 145 && origY == 300 && z == 12)
+              //  cerr<<"value for z 12"<<z<<" val "<<value<<" dx "<<dx<<" x "<<x<<" y "<<y<<"\n";
             if( value  > 0.0f)
                 {  
                     if(start ==0)
@@ -790,12 +790,12 @@ struct GetPartialComposites
                         index = myOffest*8+partInd*8;
                         
                         //rays[index+0] = idx; (i== 145 && myJ == 300 )
-                        if(origX == 145 && origY == 300)
-                            cerr<<"z "<<z<<" minZ "<<zmin<<" zoffest "<<zOffest<<" val "<<value<<"\n";
+                        //if(origX == 145 && origY == 300)
+                         //   cerr<<"z "<<z<<" minZ "<<zmin<<" zoffest "<<zOffest<<" val "<<value<<"\n";
 
                         rays[index+0] = origX;
                         rays[index+1] = origY;
-                        rays[index+2] = z ;  //z + zmin = actual z
+                        rays[index+2] = z + zmin ;  //z + zmin = actual z
                         start = 1;
                     } //if start = 0
                     int colorindex = float(ncolors-1) * value;
@@ -824,7 +824,7 @@ struct GetPartialComposites
             if(value < 0.0f && start == 1)
                { start = 0;
                  end = 1;
-                 rays[index+3] = (z-1) ;
+                 rays[index+3] = (z-1)+zmin ;
                  
                  rays[index+4] = pc.x;//color.x;
                  rays[index+5] = pc.y;//color.y;
@@ -837,7 +837,7 @@ struct GetPartialComposites
                {
                  start = 0;
                  end = 1;
-                 rays[index+3] = z ;
+                 rays[index+3] = z + zmin;
                  /*
                  rays[index+4] = color.x;
                  rays[index+5] = color.y;
