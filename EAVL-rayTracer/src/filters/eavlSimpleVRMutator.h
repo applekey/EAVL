@@ -57,6 +57,7 @@ class eavlSimpleVRMutator : public eavlMutator
     {
         scene->clear();
         numTets = 0;
+        totalNumberOfPArtials->SetValue(0,0);
     }
 
     void setVerbose(bool on)
@@ -107,8 +108,10 @@ public:
     eavlIntArray* offesetPartials;
     eavlIntArray* totalNumberOfPArtials;
     eavlFloatArray* myFloatrays;
-    int sampleLCFlag;
+    int     sampleLCFlag;
+    int     myCallingProc;
     void        setSampleLCFlag(int val);
+    void        setCallingProc(int val);
   protected:
     string fieldname;
     string  tfFilename;
@@ -139,7 +142,8 @@ public:
     int     dx;
     int     dy;
     int     dz;    
-        
+       
+
     double  sampleTime;
     double  compositeTime;
     double  passSelectionTime;
@@ -153,6 +157,7 @@ public:
     eavlView view;
 
     eavlFloatArray*     samples;
+    eavlFloatArray*     samplesID;
     eavlFloatArray*     framebuffer;
     eavlByteArray*      rgba;
     
