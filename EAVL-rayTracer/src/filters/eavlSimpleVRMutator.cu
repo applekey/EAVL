@@ -39,6 +39,7 @@ eavlSimpleVRMutator::eavlSimpleVRMutator()
     width  = 100;    
     setNumPasses(1); //default number of passes
     samples                = NULL;
+    samplesID              = NULL;
     framebuffer            = NULL;
     zBuffer                = NULL;
     minSample              = NULL;
@@ -101,6 +102,7 @@ eavlSimpleVRMutator::~eavlSimpleVRMutator()
 {
     if(verbose) cout<<"Destructor"<<endl;
     deleteClassPtr(samples);
+    deleteClassPtr(samplesID);
     deleteClassPtr(framebuffer);
     deleteClassPtr(zBuffer);
     deleteClassPtr(minSample);
@@ -343,7 +345,13 @@ struct PassRange
     {
         return tuple<byte,byte,int>(minPass, maxPass,0);
     }// sampleLCFlag == 1 which means sample large cells
+
     
+    /*
+     if(mysampleLCFlag == 1)
+        return tuple<byte,byte,int>(255,255,tetNumofSample);
+    else
+       return tuple<byte,byte,int>(minPass, maxPass,0);*/ 
     }
 };
 
@@ -381,7 +389,9 @@ struct SampleFunctor3
     eavlView         view;
     int              nSamples;
     float*           samples;
+    float*           samplesID;
     float*           fb;
+    int              myCallingProc;
     int              passMinZPixel;
     int              passMaxZPixel;
     int              zSize;
@@ -390,8 +400,8 @@ struct SampleFunctor3
     int              dz;
     int              minx;
     int              miny;
-    SampleFunctor3(const eavlConstTexArray<float4> *_scalars, eavlView _view, int _nSamples, float* _samples, int _passMinZPixel, int _passMaxZPixel,int numZperPass, float* _fb, int _dx, int _dy, int _dz, int _minx, int _miny)
-    : view(_view), scalars(_scalars), nSamples(_nSamples), samples(_samples), dx(_dx), dy(_dy), dz(_dz), minx(_minx), miny(_miny)
+    SampleFunctor3(const eavlConstTexArray<float4> *_scalars, eavlView _view, int _nSamples, float* _samples,float* _samplesID, int _passMinZPixel, int _passMaxZPixel,int numZperPass, float* _fb, int _dx, int _dy, int _dz, int _minx, int _miny, int _myCallingProc)
+    : view(_view), scalars(_scalars), nSamples(_nSamples), samples(_samples),samplesID(_samplesID), dx(_dx), dy(_dy), dz(_dz), minx(_minx), miny(_miny),myCallingProc(_myCallingProc)
     {
         
         passMaxZPixel  = min(int(dz-1), _passMaxZPixel);
@@ -480,6 +490,18 @@ struct SampleFunctor3
         int zmin = ceil(mine[2]);
         int zmax = floor(maxe[2]);
 
+        
+        if(tet == 6307848 && myCallingProc == 0)
+         {   cerr<<"X "<<xmin<<" to "<<xmax<<"\n";
+             cerr<<"Y "<<ymin<<" to "<<ymax<<"\n";
+             cerr<<"Z "<<zmin<<" to "<<zmax<<"\n";
+
+         }
+
+             //if(xmin == 14 && xmax == 15 )
+              //  if(ymin == 163 && ymax == 165)
+                //        cerr<<" Tet ID "<<tet<<" z "<<zmin<<" to "<<zmax<<"\n";
+
         float4 s = scalars->getValue(scalars_tref, tet);
         //cerr<<" X "<<xmin<<" to "<<xmax<<"\n";
         //cerr<<" Y "<<ymin<<" to "<<ymax<<"\n";
@@ -518,12 +540,39 @@ struct SampleFunctor3
                     float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
                     float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
 
+                  
+
+
                     //Check if the pixel is inside the tet
                 if((a >= 0.f && b <= 1.f)) 
                  {
                         samples[index3d] = lerped;
-                       //if(x == 179 && y == 172)
-                       // cerr<<"X "<<x<<" y "<<y<<" Tet "<<tet<<"\n";
+                        samplesID[index3d] = tet;
+
+
+                    //if(tet == 790958 && myCallingProc == 0)
+                   // cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
+
+                    //if(tet == 162699 && myCallingProc == 1)
+                    //cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
+
+                        //if(tet == 694940)
+                        //    cerr<<"value "<<lerped<<" index3d "<<index3d<<"\n";
+
+                         //if(tet == 162699) cerr<<"index3d "<<index3d<<"\n";
+                         /*
+                        if(index3d == 1294109 && myCallingProc==0 )
+                        {cerr<<" Proc "<<myCallingProc<<" tet "<<tet<<" x "<<x<<" y "<<y<<" z "<<z<<" value "<<lerped<<"\n";
+                         //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
+
+                        }
+                      if(index3d == 1145212 && myCallingProc==1)
+                       { cerr<<" Proc "<<myCallingProc<<" tet "<<tet<<" x "<<x<<" y "<<y<<" z "<<z<<" value "<<lerped<<"\n";
+                        //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
+
+                        }*/
+                       //if(x == 169 && y == 302)
+                       //cerr<<"X "<<x<<" y "<<y<<" Tet "<<tet<<"\n";
 
                         //cerr<<"Cell "<<tet<<"\n";
                         //cerr<<"Z "<<z<<" value "<<samples[index3d]<<"\n";
@@ -704,6 +753,8 @@ struct GetPartialComposites
     eavlView         view;
     int              nSamples;
     float*           samples;
+    float*           samplesID;
+    int              myCallingProc;
     int              h;
     int              w;
     int              ncolors;
@@ -729,9 +780,9 @@ struct GetPartialComposites
     //int index;
     //int origX, origY;
 
-    GetPartialComposites( eavlView _view, int _nSamples, float* _samples,float* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin,int _zmin, eavlIntArray* _numOfPartials)
-    : view(_view), nSamples(_nSamples), samples(_samples),rays(_rays), offesetPartials(_offesetPartials), colorMap(_colorMap), ncolors(_ncolors), minComposite(_minComposite), maxComposite(_maxComposite), finalPass(_finalPass), maxSIndx(_maxSIndx),
-      dx(_dx), dy(_dy), xmin(_xmin), ymin(_ymin), zmin(_zmin), numOfPartials(_numOfPartials)
+    GetPartialComposites( eavlView _view, int _nSamples, float* _samples,float* _samplesID,float* _rays, eavlIntArray* _offesetPartials, const eavlConstTexArray<float4> *_colorMap, int _ncolors, eavlPoint3 _minComposite, eavlPoint3 _maxComposite, int _zOffset, bool _finalPass, int _maxSIndx, int _minZPixel, int _dx, int _dy, int _xmin, int _ymin,int _zmin, eavlIntArray* _numOfPartials, int _myCallingProc)
+    : view(_view), nSamples(_nSamples), samples(_samples),samplesID(_samplesID),rays(_rays), offesetPartials(_offesetPartials), colorMap(_colorMap), ncolors(_ncolors), minComposite(_minComposite), maxComposite(_maxComposite), finalPass(_finalPass), maxSIndx(_maxSIndx),
+      dx(_dx), dy(_dy), xmin(_xmin), ymin(_ymin), zmin(_zmin), numOfPartials(_numOfPartials), myCallingProc(_myCallingProc)
     {
         w = view.w;
         h = view.h;
@@ -746,8 +797,8 @@ struct GetPartialComposites
         int idx = get<0>(inputs);
         int x = idx%w;
         int y = idx/w;
-        int origX = x;
-        int origY = y;
+        int origX = x;//((myCallingProc+1)*idx)%w;
+        int origY = y;//((myCallingProc+1)*idx)/w;
         int minZsample = get<1>(inputs);
         int start = 0;
         int end =0;
@@ -776,27 +827,36 @@ struct GetPartialComposites
             //cerr<<"3D index "<<index3d<<" index "<<idx<<"\n";
             //printf("Coord = (%f,%f,%f) %d ",x,y,z, index3d);
             float value =  samples[index3d];//tsamples->getValue(samples_tref, index3d);// samples[index3d];
-            
+           
             //takes init value -1 if it was a large cell 
             //if (value <= 0.f || value > 1.f)
             //    continue; //cerr<<"Value "<<value<<"\n";
             //z + zmin
-             //if(origX == 145 && origY == 300 && z == 12)
+             
               //  cerr<<"value for z 12"<<z<<" val "<<value<<" dx "<<dx<<" x "<<x<<" y "<<y<<"\n";
             if( value  > 0.0f)
                 {  
+                    
+                   // if(index3d == 1145212)
+                     //   cerr<<" start index "<<(y*dx + x)*zOffest<<" tet "<<samplesID[index3d]<<"\n";
                     if(start ==0)
                     {
                         index = myOffest*8+partInd*8;
                         
                         //rays[index+0] = idx; (i== 145 && myJ == 300 )
-                        //if(origX == 145 && origY == 300)
-                         //   cerr<<"z "<<z<<" minZ "<<zmin<<" zoffest "<<zOffest<<" val "<<value<<"\n";
+                        //if(origX == 169 && origY == 302)
+                         //cerr<<" ID "<<idx<<"\n";
 
                         rays[index+0] = origX;
                         rays[index+1] = origY;
                         rays[index+2] = z + zmin ;  //z + zmin = actual z
                         start = 1;
+
+                         /*if(origX == 186 && origY == 304 )
+                        {cerr<<" Proc "<<myCallingProc<<" dx "<<dx<<" dy "<<dy<<"\n";
+                          //" index3d "<<index3d<<" value "<<value<<"\n";
+                            cerr<<"not original x "<<x<<" y "<<y<<"\n";
+                        }*/
                     } //if start = 0
                     int colorindex = float(ncolors-1) * value;
                     float4 c = colorMap->getValue(cmap_tref, colorindex);
@@ -844,15 +904,25 @@ struct GetPartialComposites
                  rays[index+6] = color.z;
                  rays[index+7] = color.w;*/
                  partInd++;
-               }
-
-             //  if(end == 1)
-               //{
                  rays[index+4] = pc.x;
                  rays[index+5] = pc.y;
                  rays[index+6] = pc.z;
                  rays[index+7] = pc.w;
                  end = 0;
+
+                 /*
+                 if(origX == 186 && origY == 304 )
+                    {
+                        cerr<<" Proc "<<myCallingProc<<" index3d "<<index3d<<" has Tet ID "<<samplesID[index3d];
+                     cerr<<" Zs "<<rays[index+2]<<" Ze "<<rays[index+3]<<"\n";
+                        }*/
+               }
+
+             //  if(end == 1)
+               //{
+                 
+
+                 
                  /*
                if(rays[index+2] == rays[index+3])
                {
@@ -1201,12 +1271,14 @@ void eavlSimpleVRMutator::clearSamplesArray()
     {
 #ifdef HAVE_CUDA
        cudaMemset(samples->GetCUDAArray(), clearValue,bytes);
+       cudaMemset(samplesID->GetCUDAArray(), clearValue,bytes);
        CUDA_CHECK_ERROR();
 #endif
     }
     else
     {
-       memset(samples->GetHostArray(), clearValue, bytes);   
+       memset(samples->GetHostArray(), clearValue, bytes); 
+       memset(samplesID->GetHostArray(), clearValue, bytes);   
     }
 
 
@@ -1223,11 +1295,13 @@ void eavlSimpleVRMutator::init()
         if(verbose) cout<<"Size Dirty"<<endl;
        
         deleteClassPtr(samples);
+        deleteClassPtr(samplesID);
         deleteClassPtr(framebuffer);
         deleteClassPtr(zBuffer);
         deleteClassPtr(minSample);
         
         samples         = new eavlFloatArray("",1,pixelsPerPass);
+        samplesID         = new eavlFloatArray("",1,pixelsPerPass);
         framebuffer     = new eavlFloatArray("",1,height*width*4);
         rgba            = new eavlByteArray("",1,height*width*4);
         zBuffer         = new eavlFloatArray("",1,height*width);
@@ -1555,16 +1629,17 @@ void  eavlSimpleVRMutator::Execute()
         ztet = (float4*) tetSOA[2]->GetHostArray();
     }
     float* samplePtr;
+    float* sampleIDPtr;
     //PartialComposite* raysPtr;
     if(!cpu)
     {
         samplePtr = (float*) samples->GetCUDAArray();
-        //raysPtr      = (PartialComposite*) rays->GetCUDAArray();
+        sampleIDPtr      = (float*) samplesID->GetCUDAArray();
     }
     else 
     {
         samplePtr = (float*) samples->GetHostArray();
-        //raysPtr      = (PartialComposite*) rays->GetCUDAArray();
+        sampleIDPtr      = (float*) samplesID->GetHostArray();
     }
 
     float* alphaPtr;
@@ -1703,7 +1778,7 @@ void  eavlSimpleVRMutator::Execute()
                                                         eavlIndexable<eavlFloatArray>(ssd,*i2),
                                                         eavlIndexable<eavlFloatArray>(ssd,*i3)),
                                                         eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)), 
-                                                     SampleFunctor3(scalars_array, view, nSamples, samplePtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin),passSize),
+                                                     SampleFunctor3(scalars_array, view, nSamples, samplePtr,sampleIDPtr, pixelZMin, pixelZMax, passZStride, alphaPtr, dx, dy,dz, xmin,ymin, myCallingProc),passSize),
                                                      "Sampler");
            eavlExecutor::Go();
             //cerr<<"  Done Sampling \n";
@@ -1784,7 +1859,7 @@ void  eavlSimpleVRMutator::Execute()
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
                                                                 eavlIndexable<eavlIntArray>(minSample)),
                                                        eavlOpArgs(eavlIndexable<eavlFloatArray>(dummy,*idummy)),
-                                                       GetPartialComposites( view, nSamples, samplePtr,raysPtr,offesetPartials,  color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin,zmin,numOfPartials), width*height),
+                                                       GetPartialComposites( view, nSamples, samplePtr,sampleIDPtr,raysPtr,offesetPartials,  color_map_array, colormapSize, mins, maxs, passZStride, finalPass, pixelsPerPass,pixelZMin, dx,dy,xmin,ymin,zmin,numOfPartials, myCallingProc), width*height),
                                                        "Get Partial Composite");
 
             eavlExecutor::Go();
@@ -2174,7 +2249,10 @@ void eavlSimpleVRMutator::setSampleLCFlag(int val)
     sampleLCFlag = val; 
     //cerr<<"sampleLCFlag value changes to "<<sampleLCFlag<<"\n";
 }
-
+void eavlSimpleVRMutator::setCallingProc(int val)
+{
+    myCallingProc = val;
+}
 void eavlSimpleVRMutator::getImageSubsetDims(int *dims)
 {
   dims[0] = xmin;
