@@ -394,6 +394,8 @@ struct SampleFunctor3
     int              myCallingProc;
     int              passMinZPixel;
     int              passMaxZPixel;
+    int              myPassmin;
+    int              myPassmax;
     int              zSize;
     int              dx;
     int              dy;
@@ -401,7 +403,7 @@ struct SampleFunctor3
     int              minx;
     int              miny;
     SampleFunctor3(const eavlConstTexArray<float4> *_scalars, eavlView _view, int _nSamples, float* _samples,float* _samplesID, int _passMinZPixel, int _passMaxZPixel,int numZperPass, float* _fb, int _dx, int _dy, int _dz, int _minx, int _miny, int _myCallingProc)
-    : view(_view), scalars(_scalars), nSamples(_nSamples), samples(_samples),samplesID(_samplesID), dx(_dx), dy(_dy), dz(_dz), minx(_minx), miny(_miny),myCallingProc(_myCallingProc)
+    : view(_view), scalars(_scalars), nSamples(_nSamples), samples(_samples),samplesID(_samplesID),myPassmin(_passMinZPixel),myPassmax(_passMaxZPixel), dx(_dx), dy(_dy), dz(_dz), minx(_minx), miny(_miny),myCallingProc(_myCallingProc)
     {
         
         passMaxZPixel  = min(int(dz-1), _passMaxZPixel);
@@ -432,6 +434,13 @@ struct SampleFunctor3
         p[3].y = get<11>(inputs);
         p[3].z = get<12>(inputs);
 
+        /*
+        if(tet == 790958 || tet == 162699 )
+        {
+            cerr<<" tet "<<tet<<" dz "<<dz-1<<" _passMaxZPixel "<<myPassmax<<" passMaxZPixel "<<passMaxZPixel<<" proc "<<myCallingProc<<"\n";
+            cerr<<" tet "<<tet<<" _passMinZPixel "<<myPassmin<<" passMinZPixel "<<passMinZPixel<<" proc "<<myCallingProc<<"\n";
+        }
+        */
         eavlVector3 v[3];
         for(int i = 1; i < 4; i++)
         {
@@ -483,6 +492,7 @@ struct SampleFunctor3
         maxe[2] = min(float(passMaxZPixel), maxe[2]);
         mine[2] = max(float(passMinZPixel), mine[2]);
         //cout<<p[0]<<p[1]<<p[2]<<p[3]<<endl;
+
         int xmin = ceil(mine[0]);
         int xmax = floor(maxe[0]);
         int ymin = ceil(mine[1]);
@@ -490,13 +500,17 @@ struct SampleFunctor3
         int zmin = ceil(mine[2]);
         int zmax = floor(maxe[2]);
 
-        
-        if(tet == 6307848 && myCallingProc == 0)
+        //if(tet == 694940 && myCallingProc == 0)
+        //    cerr<<" mine "<<mine<<" maxe "<<maxe<<" zmin "<<zmin<<" zmax "<<zmax<<"\n";
+
+
+        /*
+        if(tet == 694940 )
          {   cerr<<"X "<<xmin<<" to "<<xmax<<"\n";
              cerr<<"Y "<<ymin<<" to "<<ymax<<"\n";
              cerr<<"Z "<<zmin<<" to "<<zmax<<"\n";
 
-         }
+         }*/
 
              //if(xmin == 14 && xmax == 15 )
               //  if(ymin == 163 && ymax == 165)
@@ -540,8 +554,8 @@ struct SampleFunctor3
                     float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
                     float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
 
-                  
-
+                 // if(tet == 694940)
+                 // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
 
                     //Check if the pixel is inside the tet
                 if((a >= 0.f && b <= 1.f)) 
@@ -773,8 +787,8 @@ struct GetPartialComposites
     int              xmin;
     int              ymin;
     int              zmin;
-    eavlIntArray*             numOfPartials;
-    eavlIntArray* offesetPartials;
+    eavlIntArray*    numOfPartials;
+    eavlIntArray*    offesetPartials;
     //int start;
     float* rays;
     //int index;
@@ -795,6 +809,7 @@ struct GetPartialComposites
     EAVL_FUNCTOR tuple<float> operator()(tuple<int,int> inputs )
     {
         int idx = get<0>(inputs);
+
         int x = idx%w;
         int y = idx/w;
         int origX = x;//((myCallingProc+1)*idx)%w;
@@ -833,6 +848,8 @@ struct GetPartialComposites
             //    continue; //cerr<<"Value "<<value<<"\n";
             //z + zmin
              
+             //if(index3d == 1145212 && myCallingProc == 1)
+             //  cerr<<idx<<"\n";
               //  cerr<<"value for z 12"<<z<<" val "<<value<<" dx "<<dx<<" x "<<x<<" y "<<y<<"\n";
             if( value  > 0.0f)
                 {  
@@ -852,11 +869,11 @@ struct GetPartialComposites
                         rays[index+2] = z + zmin ;  //z + zmin = actual z
                         start = 1;
 
-                         /*if(origX == 186 && origY == 304 )
-                        {cerr<<" Proc "<<myCallingProc<<" dx "<<dx<<" dy "<<dy<<"\n";
+                         //if(origX == 186 && origY == 304 )
+                        //{cerr<<" Proc "<<myCallingProc<<" tet ID "<<samplesID[index3d]<<"\n";
                           //" index3d "<<index3d<<" value "<<value<<"\n";
-                            cerr<<"not original x "<<x<<" y "<<y<<"\n";
-                        }*/
+                            //cerr<<"not original x "<<x<<" y "<<y<<"\n";
+                       // }
                     } //if start = 0
                     int colorindex = float(ncolors-1) * value;
                     float4 c = colorMap->getValue(cmap_tref, colorindex);
@@ -1291,6 +1308,7 @@ void eavlSimpleVRMutator::init()
     
     if(sizeDirty)
     {   
+//cerr << "NUM PASSES = " << numPasses << endl;
         setNumPasses(numPasses);
         if(verbose) cout<<"Size Dirty"<<endl;
        
@@ -1381,10 +1399,12 @@ void eavlSimpleVRMutator::init()
         deleteClassPtr(screenIterator);
         if(false && numPasses == 1)
         {
+//cerr << "THIS SHOULD NEVER HAPPEN" << endl;
             currentPassMembers = iterator;
         }
         else
         {   //we don't need to allocate this if we are only doing one pass
+//cerr << "We are making an array with " << 1 << " and " << passCountEstimate << endl;
             currentPassMembers = new eavlIntArray("",1, passCountEstimate);
             reverseIndex = new eavlIntArray("",1, passCountEstimate); 
         }
@@ -1491,6 +1511,7 @@ void eavlSimpleVRMutator::findCurrentPassMembers(int pass)
       THROW(eavlException, "exceeded max pass size.");
     } 
 
+//cerr << "PASS SIZE = " << passSize << endl;
     if(passSize == 0)
     {
         return;
@@ -1508,6 +1529,8 @@ void eavlSimpleVRMutator::findCurrentPassMembers(int pass)
                                                 passSize),
                                                 "pull in the tets for this pass");
     eavlExecutor::Go();
+//cerr << "After gather, first val is " << currentPassMembers->GetValue(0) << endl;
+//cerr << "After gather, second val is " << currentPassMembers->GetValue(1) << endl;
     
 
     if(verbose) passSelectionTime += eavlTimer::Stop(passtime,"pass");
@@ -1719,12 +1742,13 @@ void  eavlSimpleVRMutator::Execute()
     if(verbose) passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
         
     
-    //cout<<"Pass Z stride "<<passZStride<<endl;
+    //cout<<"Pass Z stride "<<passZStride<<" proc "<<myCallingProc<<endl;
     for(int i = 0; i < numPasses; i++)
     {
         // ins sample space
         int pixelZMin = passZStride * i;
         int pixelZMax = passZStride * (i + 1) - 1;
+        //cout<<"pixelZMax "<<pixelZMax<<" pixelZMin "<<pixelZMin<<" proc "<<myCallingProc<<endl;
       
         try
         {
@@ -1756,6 +1780,8 @@ void  eavlSimpleVRMutator::Execute()
             if(verbose) tsspace = eavlTimer::Start();
             
            // cerr<<"Before screen space transformation\n";
+            //cerr<<"passSize "<<passSize<<" proc "<<myCallingProc<<"\n";
+
             performScreenSpaceTransform(currentPassMembers,passSize);
 
 	        //cerr<<"Done Screen Space Transform\n";
@@ -1764,6 +1790,8 @@ void  eavlSimpleVRMutator::Execute()
             int tsample;
             if(verbose) tsample = eavlTimer::Start();
             //Call Sample function
+//cerr << "Num vals = " << currentPassMembers->GetNumberOfTuples() << endl;
+//cerr << "Value of 0 = " << currentPassMembers->GetValue(0) << endl;
             eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(currentPassMembers),
                                                         eavlIndexable<eavlFloatArray>(ssa,*i1),
                                                         eavlIndexable<eavlFloatArray>(ssa,*i2),
