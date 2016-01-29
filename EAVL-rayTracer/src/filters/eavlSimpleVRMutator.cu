@@ -9,6 +9,7 @@
 #include "eavlSimpleReverseIndexOp.h"
 #include "eavlRayExecutionMode.h"
 #include "eavlRTUtil.h"
+#include <omp.h>
 #ifdef HAVE_CUDA
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -32,7 +33,7 @@ eavlConstTexArray<float4>* scalars_array;
 eavlSimpleVRMutator::eavlSimpleVRMutator()
 {   
     cpu = eavlRayExecutionMode::isCPUOnly();
-
+    	
 
     opacityFactor = 1.f;
     height = 100;
@@ -93,9 +94,9 @@ eavlSimpleVRMutator::eavlSimpleVRMutator()
     dz = nSamples;
     xmin = 0;
     ymin = 0;
-    zmin = 0;  
-}
+    zmin = 0; 
 
+}
 //-------------------------------------------------
 
 eavlSimpleVRMutator::~eavlSimpleVRMutator()
@@ -333,6 +334,7 @@ struct PassRange
 
         int tetNumofSample = ((maxe[0] - mine[0]) * (maxe[0] - mine[0])) + ((maxe[1] - mine[1]) * (maxe[1] - mine[1])) + ((maxe[2] - mine[2]) * (maxe[2] - mine[2]));
 
+	
     if(mysampleLCFlag == 0)
     { 
       if(tetNumofSample > CellThreshold)
@@ -519,6 +521,9 @@ struct SampleFunctor3
         float4 s = scalars->getValue(scalars_tref, tet);
         //cerr<<" X "<<xmin<<" to "<<xmax<<"\n";
         //cerr<<" Y "<<ymin<<" to "<<ymax<<"\n";
+
+
+
         for(int x = xmin; x <= xmax; ++x)
         {
             for(int y = ymin; y <= ymax; ++y)
@@ -1547,6 +1552,9 @@ void  eavlSimpleVRMutator::Execute()
     // view.SetupMatrices();
     // cout<<view.P<<" \n"<<view.V<<endl;
     //cerr<<"IN execute\n";
+	bool execDebug = false;
+
+//int tExec = eavlTimer::Start();
     if(isTransparentBG) 
     {
         bgColor.c[0] =0.f; 
@@ -1564,7 +1572,7 @@ void  eavlSimpleVRMutator::Execute()
     allocateTime = 0;
     screenSpaceTime = 0;
     renderTime = 0;
-   
+    double ExecuteTime= 0; 
     int tets = scene->getNumTets();
     //eavlPartialComp* rays; 
    
@@ -1590,14 +1598,17 @@ void  eavlSimpleVRMutator::Execute()
     int new_dx = maxs.x - mins.x;
     int new_dy = maxs.y - mins.y;
     int new_dz = maxs.z - mins.z;
-    //cerr<<"Before if sizeDirty\n";
+
+    
+    //cerr<<"Rank "<<myCallingProc<<" thread\n";
     if(new_dx != dx || new_dy != dy || new_dz != dz) sizeDirty = true;
     dx = new_dx;
     dy = new_dy;
     dz = new_dz;
     //cerr<<"After sizeDirty\n";
     int tinit;
-    if(verbose) tinit = eavlTimer::Start();
+    if(execDebug) 
+   tinit = eavlTimer::Start();
     init();
     //cerr<<"After init\n";
     //cerr<<"num of tets "<<tets<<"\n";
@@ -1674,17 +1685,21 @@ void  eavlSimpleVRMutator::Execute()
     {
         alphaPtr = (float*) framebuffer->GetHostArray();
     }
-    if(verbose) cout<<"Init        RUNTIME: "<<eavlTimer::Stop(tinit,"init")<<endl;
+  if(execDebug)
+if(myCallingProc == 0) 
+ cout<<"Init        RUNTIME: "<<eavlTimer::Stop(tinit,"init")<<endl;
 
     int ttot;
-    if(verbose) ttot = eavlTimer::Start();
+    if(execDebug) 
+ ttot = eavlTimer::Start();
 
     if(verbose)
     {
         cout<<"BBox Screen Space "<<mins<<maxs<<endl; 
     }
     int tclear;
-    if(verbose) tclear = eavlTimer::Start();
+  if(execDebug) 
+ tclear = eavlTimer::Start();
 
     //cerr<<"Bfore adding operations \n";
     eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(framebuffer),
@@ -1707,11 +1722,13 @@ void  eavlSimpleVRMutator::Execute()
    
     
     
-     if(verbose) 
+     if(execDebug) 
+if(myCallingProc == 0)
         cout<<"ClearBuffs  RUNTIME: "<<eavlTimer::Stop(tclear,"")<<endl;
 
     int ttrans;
-    if(verbose) ttrans = eavlTimer::Start();
+    if(execDebug) 
+ttrans = eavlTimer::Start();
     if(false && numPasses == 1)
     {
         //just set all tets to the first pass
@@ -1739,7 +1756,8 @@ void  eavlSimpleVRMutator::Execute()
     }
     
 
-    if(verbose) passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
+  if(execDebug) 
+ passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
         
     
     //cout<<"Pass Z stride "<<passZStride<<" proc "<<myCallingProc<<endl;
@@ -1766,7 +1784,8 @@ void  eavlSimpleVRMutator::Execute()
         {
 
             int tclearS;
-            if(verbose) tclearS = eavlTimer::Start();
+           if(execDebug)
+ tclearS = eavlTimer::Start();
             if (i != 0) clearSamplesArray();  //this is a win on CPU for sure, gpu seems to be the same
             //cerr<<"clearSamplesArray is done\n";
             // eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(samples),
@@ -1774,10 +1793,12 @@ void  eavlSimpleVRMutator::Execute()
             //                                          FloatMemsetFunctor(-1.f)),
             //                                          "clear Frame Buffer");
             // eavlExecutor::Go();
-            if(verbose) clearTime += eavlTimer::Stop(tclearS,"");
+    if(execDebug) 
+ clearTime += eavlTimer::Stop(tclearS,"");
                 
             int tsspace;
-            if(verbose) tsspace = eavlTimer::Start();
+ if(execDebug)
+  tsspace = eavlTimer::Start();
             
            // cerr<<"Before screen space transformation\n";
             //cerr<<"passSize "<<passSize<<" proc "<<myCallingProc<<"\n";
@@ -1786,9 +1807,11 @@ void  eavlSimpleVRMutator::Execute()
 
 	        //cerr<<"Done Screen Space Transform\n";
     
-            if(verbose) screenSpaceTime += eavlTimer::Stop(tsspace,"sample");
+            if(execDebug) 
+ screenSpaceTime += eavlTimer::Stop(tsspace,"sample");
             int tsample;
-            if(verbose) tsample = eavlTimer::Start();
+ if(execDebug)
+ tsample = eavlTimer::Start();
             //Call Sample function
 //cerr << "Num vals = " << currentPassMembers->GetNumberOfTuples() << endl;
 //cerr << "Value of 0 = " << currentPassMembers->GetValue(0) << endl;
@@ -1812,16 +1835,20 @@ void  eavlSimpleVRMutator::Execute()
             //cerr<<"  Done Sampling \n";
 
 
-            if(verbose) sampleTime += eavlTimer::Stop(tsample,"sample");
+           if(execDebug) 
+sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
-            if(verbose) talloc = eavlTimer::Start();
+ if(execDebug) 
+talloc = eavlTimer::Start();
 
-            if(verbose) allocateTime += eavlTimer::Stop(talloc,"sample");
+            if(execDebug) 
+allocateTime += eavlTimer::Stop(talloc,"sample");
             //eavlArrayIndexer * ifb = new eavlArrayIndexer(1, offset);
             //cout<<"screenIterator last value "<<screenIterator->GetS
             bool finalPass = (i == numPasses - 1) ? true : false;
             int tcomp;
-            if(verbose) tcomp = eavlTimer::Start();
+ if(execDebug) 
+tcomp = eavlTimer::Start();
       
             numOfPartials = new eavlIntArray("",1,width*height);
             //cerr<<"**** pixel 0,0 "<<numOfPartials->GetValue(0)<<"\n";
@@ -1915,9 +1942,10 @@ void  eavlSimpleVRMutator::Execute()
 
             
 	    //cerr<<"Add composite op\n";
-	    eavlExecutor::Go();
+	    eavlExecutor::Go(); 
 	    //cerr<<"Done composite \n";
-            if(verbose) compositeTime += eavlTimer::Stop(tcomp,"tcomp");
+            if(execDebug)
+ compositeTime += eavlTimer::Stop(tcomp,"tcomp");
 
 	   // cerr<<"Done composite \n";
 
@@ -1930,19 +1958,40 @@ void  eavlSimpleVRMutator::Execute()
                 totalNumberOfPArtials = new eavlIntArray("",1,1);
             }
     }//for each pass
-    if(verbose) renderTime  = eavlTimer::Stop(ttot,"total render");
-    if(verbose) cout<<"PassFilter  RUNTIME: "<<passFilterTime<<endl;
+ if(execDebug) 
+renderTime  = eavlTimer::Stop(ttot,"total render");
+
+//ExecuteTime = eavlTimer::Stop(tExec,"All Execute func time");
+    if(execDebug) 
+if(myCallingProc == 0)
+cout<<"PassFilter  RUNTIME: "<<passFilterTime<<endl;
    // cout<<"Clear Sample  RUNTIME: "<<clearTime<<endl;
-    if(verbose) cout<<"PassSel     RUNTIME: "<<passSelectionTime<<" Pass AVE: "<<passSelectionTime / (float)numPasses<<endl;
-    if(verbose) cout<<"ScreenSpace RUNTIME: "<<screenSpaceTime<<" Pass AVE: "<<screenSpaceTime / (float)numPasses<<endl;
-    if(verbose) cout<<"Sample      RUNTIME: "<<sampleTime<<" Pass AVE: "<<sampleTime / (float)numPasses<<endl;
-    if(verbose) cout<<"Composite   RUNTIME: "<<compositeTime<<" Pass AVE: "<<compositeTime / (float)numPasses<<endl;
-    if(verbose) cout<<"Alloc       RUNTIME: "<<allocateTime<<" Pass AVE: "<<allocateTime / (float)numPasses<<endl;
-    if(verbose) cout<<"Total       RUNTIME: "<<renderTime<<endl;
+ if(execDebug)
+if(myCallingProc == 0)
+ cout<<"PassSel     RUNTIME: "<<passSelectionTime<<" Pass AVE: "<<passSelectionTime / (float)numPasses<<endl;
+ if(execDebug) 
+if(myCallingProc == 0)
+cout<<"ScreenSpace RUNTIME: "<<screenSpaceTime<<" Pass AVE: "<<screenSpaceTime / (float)numPasses<<endl;
+    if(execDebug) 
+if(myCallingProc == 0)
+cout<<"Sample      RUNTIME: "<<sampleTime<<" Pass AVE: "<<sampleTime / (float)numPasses<<endl;
+ if(execDebug) 
+if(myCallingProc == 0)
+cout<<"Composite   RUNTIME: "<<compositeTime<<" Pass AVE: "<<compositeTime / (float)numPasses<<endl;
+    if(execDebug) 
+if(myCallingProc == 0)
+cout<<"Alloc       RUNTIME: "<<allocateTime<<" Pass AVE: "<<allocateTime / (float)numPasses<<endl;
+if(execDebug)
+if(myCallingProc == 0)
+cout<<"Total       RUNTIME: "<<renderTime<<endl;
+
+//if(myCallingProc == 0)
+//cout<<"Time for Exec Fun: "<<ExecuteTime<<endl;
     //dataWriter();
     //composite my pixel color with background
 
     //cerr<<"Before composite\n";
+
  eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
