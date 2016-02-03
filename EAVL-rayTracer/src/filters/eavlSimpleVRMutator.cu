@@ -9,11 +9,11 @@
 #include "eavlSimpleReverseIndexOp.h"
 #include "eavlRayExecutionMode.h"
 #include "eavlRTUtil.h"
-#include <omp.h>
 #ifdef HAVE_CUDA
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #endif
+#include <omp.h>
 
 #define COLOR_MAP_SIZE 1024
 
@@ -417,7 +417,8 @@ struct SampleFunctor3
 
     EAVL_FUNCTOR tuple<float> operator()(tuple<int,float,float,float,float,float,float,float,float,float,float,float,float> inputs )
     {
-        int tet = get<0>(inputs);
+    
+  	int tet = get<0>(inputs);
         
         eavlVector3 p[4]; //TODO vectorize
         p[0].x = get<1>(inputs);
@@ -436,13 +437,6 @@ struct SampleFunctor3
         p[3].y = get<11>(inputs);
         p[3].z = get<12>(inputs);
 
-        /*
-        if(tet == 790958 || tet == 162699 )
-        {
-            cerr<<" tet "<<tet<<" dz "<<dz-1<<" _passMaxZPixel "<<myPassmax<<" passMaxZPixel "<<passMaxZPixel<<" proc "<<myCallingProc<<"\n";
-            cerr<<" tet "<<tet<<" _passMinZPixel "<<myPassmin<<" passMinZPixel "<<passMinZPixel<<" proc "<<myCallingProc<<"\n";
-        }
-        */
         eavlVector3 v[3];
         for(int i = 1; i < 4; i++)
         {
@@ -474,7 +468,9 @@ struct SampleFunctor3
         float d8 = v[0].x * v[1].z - v[1].x * v[0].z;
         //D22(mat[0][0], mat[0][1], mat[1][0], mat[1][1])
         float d9 = v[0].x * v[1].y - v[1].x * v[0].y;
-        /* need the extents again, just recalc */
+       
+	 // need the extents again, just recalc 
+
         eavlPoint3 mine(FLT_MAX,FLT_MAX,FLT_MAX);
         eavlPoint3 maxe(-FLT_MAX,-FLT_MAX,-FLT_MAX);
        
@@ -486,9 +482,10 @@ struct SampleFunctor3
                     maxe[d] = max(p[i][d], maxe[d] );
             }
         } 
-
+          
         // for(int i = 0; i < 3; i++) mine[i] = max(mine[i],0.f);
-        // /*clamp*/
+        // clamp
+
         maxe[0] = min(float(dx-1.f), maxe[0]); //??  //these lines cost 14 registers
         maxe[1] = min(float(dy - 1.f), maxe[1]);
         maxe[2] = min(float(passMaxZPixel), maxe[2]);
@@ -506,13 +503,7 @@ struct SampleFunctor3
         //    cerr<<" mine "<<mine<<" maxe "<<maxe<<" zmin "<<zmin<<" zmax "<<zmax<<"\n";
 
 
-        /*
-        if(tet == 694940 )
-         {   cerr<<"X "<<xmin<<" to "<<xmax<<"\n";
-             cerr<<"Y "<<ymin<<" to "<<ymax<<"\n";
-             cerr<<"Z "<<zmin<<" to "<<zmax<<"\n";
 
-         }*/
 
              //if(xmin == 14 && xmax == 15 )
               //  if(ymin == 163 && ymax == 165)
@@ -579,17 +570,9 @@ struct SampleFunctor3
                         //    cerr<<"value "<<lerped<<" index3d "<<index3d<<"\n";
 
                          //if(tet == 162699) cerr<<"index3d "<<index3d<<"\n";
-                         /*
-                        if(index3d == 1294109 && myCallingProc==0 )
-                        {cerr<<" Proc "<<myCallingProc<<" tet "<<tet<<" x "<<x<<" y "<<y<<" z "<<z<<" value "<<lerped<<"\n";
-                         //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
 
-                        }
-                      if(index3d == 1145212 && myCallingProc==1)
-                       { cerr<<" Proc "<<myCallingProc<<" tet "<<tet<<" x "<<x<<" y "<<y<<" z "<<z<<" value "<<lerped<<"\n";
                         //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
 
-                        }*/
                        //if(x == 169 && y == 302)
                        //cerr<<"X "<<x<<" y "<<y<<" Tet "<<tet<<"\n";
 
@@ -606,7 +589,12 @@ struct SampleFunctor3
                 }//z
             }//y                                                                                                                                                                                           
         }//x
+   
 
+// for (int i = 0 ; i < 100 ; i++)
+  //            rand();
+
+	int temp = tet + 2;
         return tuple<float>(0.f);
     }
 };
@@ -1552,9 +1540,16 @@ void  eavlSimpleVRMutator::Execute()
     // view.SetupMatrices();
     // cout<<view.P<<" \n"<<view.V<<endl;
     //cerr<<"IN execute\n";
-	bool execDebug = false;
+	bool execDebug = true;
 
-//int tExec = eavlTimer::Start();
+//omp_set_dynamic(0);     // Explicitly disable dynamic teams
+//omp_set_num_threads(4);
+//#pragma omp parallel
+  cerr<<"num of threads "<<omp_get_num_threads()<<"\n";
+
+
+
+int tExec = eavlTimer::Start();
     if(isTransparentBG) 
     {
         bgColor.c[0] =0.f; 
@@ -1724,7 +1719,7 @@ if(myCallingProc == 0)
     
      if(execDebug) 
 if(myCallingProc == 0)
-        cout<<"ClearBuffs  RUNTIME: "<<eavlTimer::Stop(tclear,"")<<endl;
+       cout<<"ClearBuffs  RUNTIME: "<<eavlTimer::Stop(tclear,"")<<endl;
 
     int ttrans;
     if(execDebug) 
@@ -1757,7 +1752,7 @@ ttrans = eavlTimer::Start();
     
 
   if(execDebug) 
- passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
+passFilterTime =  eavlTimer::Stop(ttrans,"ttrans");
         
     
     //cout<<"Pass Z stride "<<passZStride<<" proc "<<myCallingProc<<endl;
@@ -1835,7 +1830,7 @@ ttrans = eavlTimer::Start();
             //cerr<<"  Done Sampling \n";
 
 
-           if(execDebug) 
+          if(execDebug) 
 sampleTime += eavlTimer::Stop(tsample,"sample");
             int talloc;
  if(execDebug) 
@@ -1924,7 +1919,7 @@ tcomp = eavlTimer::Start();
              
             //-----------------------------------------------
             
-            
+           /* 
              eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1942,7 +1937,7 @@ tcomp = eavlTimer::Start();
 
             
 	    //cerr<<"Add composite op\n";
-	    eavlExecutor::Go(); 
+	    eavlExecutor::Go(); */
 	    //cerr<<"Done composite \n";
             if(execDebug)
  compositeTime += eavlTimer::Stop(tcomp,"tcomp");
@@ -1961,11 +1956,12 @@ tcomp = eavlTimer::Start();
  if(execDebug) 
 renderTime  = eavlTimer::Stop(ttot,"total render");
 
-//ExecuteTime = eavlTimer::Stop(tExec,"All Execute func time");
+ExecuteTime = eavlTimer::Stop(tExec,"All Execute func time");
     if(execDebug) 
 if(myCallingProc == 0)
 cout<<"PassFilter  RUNTIME: "<<passFilterTime<<endl;
-   // cout<<"Clear Sample  RUNTIME: "<<clearTime<<endl;
+if(myCallingProc == 0)
+   cout<<"Clear Sample  RUNTIME: "<<clearTime<<endl;
  if(execDebug)
 if(myCallingProc == 0)
  cout<<"PassSel     RUNTIME: "<<passSelectionTime<<" Pass AVE: "<<passSelectionTime / (float)numPasses<<endl;
@@ -1985,13 +1981,13 @@ if(execDebug)
 if(myCallingProc == 0)
 cout<<"Total       RUNTIME: "<<renderTime<<endl;
 
-//if(myCallingProc == 0)
-//cout<<"Time for Exec Fun: "<<ExecuteTime<<endl;
+if(myCallingProc == 0)
+cout<<"Time for Exec Fun: "<<ExecuteTime<<endl;
     //dataWriter();
     //composite my pixel color with background
 
     //cerr<<"Before composite\n";
-
+/*
  eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -2003,7 +1999,7 @@ cout<<"Total       RUNTIME: "<<renderTime<<endl;
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ia)),
                                                      CompositeBG(bgColor), height*width),
                                                      "Composite");
-    eavlExecutor::Go();
+    eavlExecutor::Go();*/
 
     //cerr<<"After composte \n";
 }
