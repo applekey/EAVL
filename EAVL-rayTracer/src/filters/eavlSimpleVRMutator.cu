@@ -517,45 +517,54 @@ struct SampleFunctor3
 
         for(int x = xmin; x <= xmax; ++x)
         {
+        	float w1 = x - p[0].x;
+        	float w1d1 =  w1 * d1;
+        	float w1d2 =  w1 * d2;
+        	float w1d3 =  w1 * d3;
+
             for(int y = ymin; y <= ymax; ++y)
             { 
                 int pixel = ( (y+miny) * view.w + x + minx);
                 if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
                 
+                float w2 = y - p[0].y; 
+
+                float w2d4 =  w2 * d4;
+        		float w2d6 =  w2 * d6;
+        		float w2d8 =  w2 * d8;
+
+
                 int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
                 #pragma ivdep
                 for(int z=zmin; z<=zmax; ++z)
                 {
 
-                    float w1 = x - p[0].x; 
-                    float w2 = y - p[0].y; 
+                    
+                    
                     float w3 = z - p[0].z; 
 
-                    float xx =   w1 * d1 - w2 * d4 + w3 * d5;
+	                float xx =   w1d1 - w2d4 + w3 * d5;
                     xx *= det; 
 
-                    float yy = - w1 * d2 + w2 * d6 - w3 * d7; 
+                    float yy = - w1d2 + w2d6 - w3 * d7; 
                     yy *= det;
 
-                    float zz =   w1 * d3 - w2 * d8 + w3 * d9;
+                    float zz =   w1d3 - w2d8 + w3 * d9;
                     zz *= det;
-                    w1 = xx; 
-                    w2 = yy; 
-                    w3 = zz; 
 
-                    float w0 = 1.f - w1 - w2 - w3;
-
-                    int index3d = startindex + z;
-                    float lerped = w0*s.x + w1*s.y + w2*s.z + w3*s.w;
-                    float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
-                    float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
-
+                    float w1t = xx;
+                    float w2t = yy;
+                    float w3t = zz;
+                    float w0t = 1.f - w1t - w2t - w3t;
+                   
                  // if(tet == 694940)
                  // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
 
                     //Check if the pixel is inside the tet
-                if((a >= 0.f && b <= 1.f)) 
+                if((ffmin(w0t,ffmin(w1t,ffmin(w2t,w3t))) >= 0.f && ffmax(w0t,ffmax(w1t,ffmax(w2t,w3t))) <= 1.f)) 
                  {
+                 		int index3d = startindex + z;
+                 		float lerped = w0t*s.x + w1t*s.y + w2t*s.z + w3t*s.w;
                         samples[index3d] = lerped;
                         samplesID[index3d] = tet;
 
