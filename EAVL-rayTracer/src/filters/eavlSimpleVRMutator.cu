@@ -418,7 +418,7 @@ struct SampleFunctor3
     EAVL_FUNCTOR tuple<float> operator()(tuple<int,float,float,float,float,float,float,float,float,float,float,float,float> inputs )
     {
     
-  	int tet = get<0>(inputs);
+  		int tet = get<0>(inputs);
         
         eavlVector3 p[4]; //TODO vectorize
         p[0].x = get<1>(inputs);
@@ -454,6 +454,7 @@ struct SampleFunctor3
         float det = v[0].x * d1 - v[1].x * d2 + v[2].x * d3;
 
         if(det == 0) return tuple<float>(0.f); // dirty degenerate tetrahedron
+        float oneOverDet = det;
         det  = 1.f  / det;
 
         //D22(mat[0][1], mat[0][2], mat[2][1], mat[2][2]);
@@ -513,8 +514,14 @@ struct SampleFunctor3
         //cerr<<" X "<<xmin<<" to "<<xmax<<"\n";
         //cerr<<" Y "<<ymin<<" to "<<ymax<<"\n";
 
+        float multiplier = 1;
+        if(det<0)
+        {
+        	multiplier = -1;
+        }
 
-
+        int ptotal = 0;
+        int startindex = (ymin * dx + xmin) * zSize;//dx*(y + dy*(z -passMinZPixel));
         for(int x = xmin; x <= xmax; ++x)
         {
         	float w1 = x - p[0].x;
@@ -533,76 +540,119 @@ struct SampleFunctor3
         		float w2d6 =  w2 * d6;
         		float w2d8 =  w2 * d8;
 
+        		float w1d1Minw2d4 = w1d1 - w2d4 ;
+        		float minW1d2Plusw2d6 = - w1d2 + w2d6;
+        		float w1d3minW2d8 = w1d3 - w2d8;
 
-                int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
                 #pragma ivdep
+
+                bool found = false;
+                bool backTrack = false;
+
+                float total = 0;
+
+                int index3d = startindex + zmin;
                 for(int z=zmin; z<=zmax; ++z)
                 {
-
-                    
-                    
                     float w3 = z - p[0].z; 
 
-	                float xx =   w1d1 - w2d4 + w3 * d5;
-                    xx *= det; 
+	                float xx =  w1d1Minw2d4 + w3 * d5;
+                    
 
-                    float yy = - w1d2 + w2d6 - w3 * d7; 
-                    yy *= det;
+                    float yy =  minW1d2Plusw2d6 - w3 * d7; 
+                    
 
-                    float zz =   w1d3 - w2d8 + w3 * d9;
-                    zz *= det;
-
-                    float w1t = xx;
-                    float w2t = yy;
-                    float w3t = zz;
-                    float w0t = 1.f - w1t - w2t - w3t;
+                    float zz =   w1d3minW2d8 + w3 * d9;
                    
-                 // if(tet == 694940)
-                 // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
+                    float aa = oneOverDet - (xx+yy+zz);
+               
 
-                    //Check if the pixel is inside the tet
-                if((ffmin(w0t,ffmin(w1t,ffmin(w2t,w3t))) >= 0.f && ffmax(w0t,ffmax(w1t,ffmax(w2t,w3t))) <= 1.f)) 
-                 {
-                 		int index3d = startindex + z;
-                 		float lerped = w0t*s.x + w1t*s.y + w2t*s.z + w3t*s.w;
-                        samples[index3d] = lerped;
-                        samplesID[index3d] = tet;
-
-
-                    //if(tet == 790958 && myCallingProc == 0)
-                   // cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
-
-                    //if(tet == 162699 && myCallingProc == 1)
-                    //cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
-
-                        //if(tet == 694940)
-                        //    cerr<<"value "<<lerped<<" index3d "<<index3d<<"\n";
-
-                         //if(tet == 162699) cerr<<"index3d "<<index3d<<"\n";
-
-                        //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
-
-                       //if(x == 169 && y == 302)
-                       //cerr<<"X "<<x<<" y "<<y<<" Tet "<<tet<<"\n";
-
-                        //cerr<<"Cell "<<tet<<"\n";
-                        //cerr<<"Z "<<z<<" value "<<samples[index3d]<<"\n";
-                      // cerr<<"HEEEEEELLO\n";
-                        //if(lerped<0 )lerped=0;
-                        //if(lerped>1) lerped=1;
-                        if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
-                    }
-                     
+                    float newdet = det;
+                    float newolddet = oneOverDet;
+                    //std::cout<<xx*det<<" "<<yy*det<<" "<<zz*det<<std::endl;
+                    xx*=multiplier;
+                    yy*=multiplier;
+                    zz*=multiplier;
+                    newdet*=newdet;
+                    newolddet *=newolddet;
                    
 
+		            // xx*=det;
+		            // yy*=det;
+		            // zz*=det;
+
+		            //std::cout<<newolddet<<std::endl;
+
+                   
+	            	if((ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f) && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= newolddet)
+	                //if((ffmin(w0t,ffmin(w1t,ffmin(w2t,w3t))) >= 0.f && ffmax(w0t,ffmax(w1t,ffmax(w2t,w3t))) <= 1.f)) 
+	                {
+	                	if(!found &&!backTrack)
+	                	{
+	                		//need to check the previous
+	                		backTrack = true;
+	                		z-=1;
+	                		continue;
+	                	}
+	                	
+	                	
+	                 	found = true;
+	             		
+	             		float lerped = (aa*s.x+xx*s.y + yy*s.z + zz*s.w);
+
+	             		total += lerped;
+	             		//ptotal++;
+	                    //samples[index3d] = lerped;
+	                    //samplesID[index3d] = tet;
+
+
+	                	//if(tet == 790958 && myCallingProc == 0)
+	                	// cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
+
+	                	//if(tet == 162699 && myCallingProc == 1)
+	                	//cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
+
+	                    //if(tet == 694940)
+	                    //    cerr<<"value "<<lerped<<" index3d "<<index3d<<"\n";
+
+	                    //if(tet == 162699) cerr<<"index3d "<<index3d<<"\n";
+
+	                    //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
+
+	                   	//if(x == 169 && y == 302)
+	                   	//cerr<<"X "<<x<<" y "<<y<<" Tet "<<tet<<"\n";
+
+	                    //cerr<<"Cell "<<tet<<"\n";
+	                    //cerr<<"Z "<<z<<" value "<<samples[index3d]<<"\n";
+	                    // cerr<<"HEEEEEELLO\n";
+	                    //if(lerped<0 )lerped=0;
+	                    //if(lerped>1) lerped=1;
+	                    //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
+	                }
+	                else if(found && !backTrack)
+	                {
+	                	break;
+	                }
+	                else if(backTrack)
+	                {
+	                	backTrack = false;
+	                }
+	                else
+	                {
+	                	z++;
+	                }
+	                samples[index3d] = total*newdet;
                 }//z
-            }//y                                                                                                                                                                                           
+                startindex +=dx*zSize;      
+            }//y  
+            startindex +=zSize;      
+
         }//x
    
 
 // for (int i = 0 ; i < 100 ; i++)
   //            rand();
-
+    //std::cout<<ptotal<<endl;
 	int temp = tet + 2;
         return tuple<float>(0.f);
     }
@@ -1928,7 +1978,7 @@ tcomp = eavlTimer::Start();
              
             //-----------------------------------------------
             
-           /* 
+           
              eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1946,7 +1996,7 @@ tcomp = eavlTimer::Start();
 
             
 	    //cerr<<"Add composite op\n";
-	    eavlExecutor::Go(); */
+	    eavlExecutor::Go(); 
 	    //cerr<<"Done composite \n";
             if(execDebug)
  compositeTime += eavlTimer::Stop(tcomp,"tcomp");
