@@ -33,6 +33,7 @@ eavlConstTexArray<float4>* scalars_array;
 eavlSimpleVRMutator::eavlSimpleVRMutator()
 {   
     cpu = eavlRayExecutionMode::isCPUOnly();
+    omp_get_thread_num();
     	
 
     opacityFactor = 1.f;
@@ -417,8 +418,7 @@ struct SampleFunctor3
 
     EAVL_FUNCTOR tuple<float> operator()(tuple<int,float,float,float,float,float,float,float,float,float,float,float,float> inputs )
     {
-    
-  		int tet = get<0>(inputs);
+        int tet = get<0>(inputs);
         
         eavlVector3 p[4]; //TODO vectorize
         p[0].x = get<1>(inputs);
@@ -454,7 +454,6 @@ struct SampleFunctor3
         float det = v[0].x * d1 - v[1].x * d2 + v[2].x * d3;
 
         if(det == 0) return tuple<float>(0.f); // dirty degenerate tetrahedron
-        float oneOverDet = det;
         det  = 1.f  / det;
 
         //D22(mat[0][1], mat[0][2], mat[2][1], mat[2][2]);
@@ -469,9 +468,7 @@ struct SampleFunctor3
         float d8 = v[0].x * v[1].z - v[1].x * v[0].z;
         //D22(mat[0][0], mat[0][1], mat[1][0], mat[1][1])
         float d9 = v[0].x * v[1].y - v[1].x * v[0].y;
-       
-	 // need the extents again, just recalc 
-
+        /* need the extents again, just recalc */
         eavlPoint3 mine(FLT_MAX,FLT_MAX,FLT_MAX);
         eavlPoint3 maxe(-FLT_MAX,-FLT_MAX,-FLT_MAX);
        
@@ -483,16 +480,14 @@ struct SampleFunctor3
                     maxe[d] = max(p[i][d], maxe[d] );
             }
         } 
-          
-        // for(int i = 0; i < 3; i++) mine[i] = max(mine[i],0.f);
-        // clamp
 
+        // for(int i = 0; i < 3; i++) mine[i] = max(mine[i],0.f);
+        // /*clamp*/
         maxe[0] = min(float(dx-1.f), maxe[0]); //??  //these lines cost 14 registers
         maxe[1] = min(float(dy - 1.f), maxe[1]);
         maxe[2] = min(float(passMaxZPixel), maxe[2]);
         mine[2] = max(float(passMinZPixel), mine[2]);
         //cout<<p[0]<<p[1]<<p[2]<<p[3]<<endl;
-
         int xmin = ceil(mine[0]);
         int xmax = floor(maxe[0]);
         int ymin = ceil(mine[1]);
@@ -500,28 +495,8 @@ struct SampleFunctor3
         int zmin = ceil(mine[2]);
         int zmax = floor(maxe[2]);
 
-        //if(tet == 694940 && myCallingProc == 0)
-        //    cerr<<" mine "<<mine<<" maxe "<<maxe<<" zmin "<<zmin<<" zmax "<<zmax<<"\n";
-
-
-
-
-             //if(xmin == 14 && xmax == 15 )
-              //  if(ymin == 163 && ymax == 165)
-                //        cerr<<" Tet ID "<<tet<<" z "<<zmin<<" to "<<zmax<<"\n";
-
         float4 s = scalars->getValue(scalars_tref, tet);
-        //cerr<<" X "<<xmin<<" to "<<xmax<<"\n";
-        //cerr<<" Y "<<ymin<<" to "<<ymax<<"\n";
 
-        float multiplier = 1;
-        if(det<0)
-        {
-        	multiplier = -1;
-        }
-
-        int ptotal = 0;
-        int startindex = (ymin * dx + xmin) * zSize;//dx*(y + dy*(z -passMinZPixel));
         for(int x = xmin; x <= xmax; ++x)
         {
         	float w1 = x - p[0].x;
@@ -533,127 +508,100 @@ struct SampleFunctor3
             { 
                 int pixel = ( (y+miny) * view.w + x + minx);
                 if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
-                
-                float w2 = y - p[0].y; 
 
+                float w2 = y - p[0].y; 
                 float w2d4 =  w2 * d4;
         		float w2d6 =  w2 * d6;
         		float w2d8 =  w2 * d8;
-
-        		float w1d1Minw2d4 = w1d1 - w2d4 ;
-        		float minW1d2Plusw2d6 = - w1d2 + w2d6;
-        		float w1d3minW2d8 = w1d3 - w2d8;
-
+                
+                int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
                 #pragma ivdep
-
-                bool found = false;
-                bool backTrack = false;
-
-                float total = 0;
-
-                int index3d = startindex + zmin;
                 for(int z=zmin; z<=zmax; ++z)
                 {
+                	float w3 = z - p[0].z; 
+
+                    float xx =   w1d1 - w2d4 + w3 * d5;
+                    xx *= det; 
+
+                    float yy = - w1d2 + w2d6 - w3 * d7; 
+                    yy *= det;
+
+                    float zz =   w1d3 - w2d8 + w3 * d9;
+                    zz *= det;
+
+                    float w1t = xx;
+                    float w2t = yy;
+                    float w3t = zz;
+                    float w0t = 1.f - w1t - w2t - w3t;
+
+                    if((ffmin(w0t,ffmin(w1t,ffmin(w2t,w3t))) >= 0.f && ffmax(w0t,ffmax(w1t,ffmax(w2t,w3t))) <= 1.f)) 
+                    {
+                    	int index3d = startindex + z;
+                    	float lerped = w0t*s.x + w1t*s.y + w2t*s.z + w3t*s.w;
+                        samples[index3d] = lerped;
+                        //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
+                    }
+
+                }//z
+            }//y
+        }//x
+
+        // the old code
+        for(int x = xmin; x <= xmax; ++x)
+        {
+            for(int y = ymin; y <= ymax; ++y)
+            { 
+                int pixel = ( (y+miny) * view.w + x + minx);
+                if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
+                
+                int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
+                #pragma ivdep
+                for(int z=zmin; z<=zmax; ++z)
+                {
+
+                    float w1 = x - p[0].x; 
+                    float w2 = y - p[0].y; 
                     float w3 = z - p[0].z; 
 
-	                float xx =  w1d1Minw2d4 + w3 * d5;
-                    
+                    float xx =   w1 * d1 - w2 * d4 + w3 * d5;
+                    xx *= det; 
 
-                    float yy =  minW1d2Plusw2d6 - w3 * d7; 
-                    
+                    float yy = - w1 * d2 + w2 * d6 - w3 * d7; 
+                    yy *= det;
 
-                    float zz =   w1d3minW2d8 + w3 * d9;
+                    float zz =   w1 * d3 - w2 * d8 + w3 * d9;
+                    zz *= det;
+                    w1 = xx; 
+                    w2 = yy; 
+                    w3 = zz; 
+
+                    float w0 = 1.f - w1 - w2 - w3;
+
+                    int index3d = startindex + z;
+                    float lerped = w0*s.x + w1*s.y + w2*s.z + w3*s.w;
+                    float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
+                    float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
+
+                 // if(tet == 694940)
+                 // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
+
+                    //Check if the pixel is inside the tet
+                if((a >= 0.f && b <= 1.f)) 
+                 {
+                 	assert(samples[index3d] == lerped);
+                
+                       
+
+
+                
+                 }
+                     
                    
-                    float aa = oneOverDet - (xx+yy+zz);
-               
 
-                    float newdet = det;
-                    float newolddet = oneOverDet;
-                    //std::cout<<xx*det<<" "<<yy*det<<" "<<zz*det<<std::endl;
-                    xx*=multiplier;
-                    yy*=multiplier;
-                    zz*=multiplier;
-                    newdet*=newdet;
-                    newolddet *=newolddet;
-                   
-
-		            // xx*=det;
-		            // yy*=det;
-		            // zz*=det;
-
-		            //std::cout<<newolddet<<std::endl;
-
-                   
-	            	if((ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f) && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= newolddet)
-	                //if((ffmin(w0t,ffmin(w1t,ffmin(w2t,w3t))) >= 0.f && ffmax(w0t,ffmax(w1t,ffmax(w2t,w3t))) <= 1.f)) 
-	                {
-	                	if(!found &&!backTrack)
-	                	{
-	                		//need to check the previous
-	                		backTrack = true;
-	                		z-=1;
-	                		continue;
-	                	}
-	                	
-	                	
-	                 	found = true;
-	             		
-	             		float lerped = (aa*s.x+xx*s.y + yy*s.z + zz*s.w);
-
-	             		total += lerped;
-	             		//ptotal++;
-	                    //samples[index3d] = lerped;
-	                    //samplesID[index3d] = tet;
-
-
-	                	//if(tet == 790958 && myCallingProc == 0)
-	                	// cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
-
-	                	//if(tet == 162699 && myCallingProc == 1)
-	                	//cerr<<myCallingProc<<" has start index "<<startindex<<"\n";
-
-	                    //if(tet == 694940)
-	                    //    cerr<<"value "<<lerped<<" index3d "<<index3d<<"\n";
-
-	                    //if(tet == 162699) cerr<<"index3d "<<index3d<<"\n";
-
-	                    //cerr<<" Proc "<<myCallingProc<<" xx "<<xx<<" yy "<<yy<<" zz "<<zz<<"\n";
-
-	                   	//if(x == 169 && y == 302)
-	                   	//cerr<<"X "<<x<<" y "<<y<<" Tet "<<tet<<"\n";
-
-	                    //cerr<<"Cell "<<tet<<"\n";
-	                    //cerr<<"Z "<<z<<" value "<<samples[index3d]<<"\n";
-	                    // cerr<<"HEEEEEELLO\n";
-	                    //if(lerped<0 )lerped=0;
-	                    //if(lerped>1) lerped=1;
-	                    //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
-	                }
-	                else if(found && !backTrack)
-	                {
-	                	break;
-	                }
-	                else if(backTrack)
-	                {
-	                	backTrack = false;
-	                }
-	                else
-	                {
-	                	z++;
-	                }
-	                samples[index3d] = total*newdet;
                 }//z
-                startindex +=dx*zSize;      
-            }//y  
-            startindex +=zSize;      
-
+            }//y                                                                                                                                                                                           
         }//x
-   
 
-// for (int i = 0 ; i < 100 ; i++)
-  //            rand();
-    //std::cout<<ptotal<<endl;
-	int temp = tet + 2;
         return tuple<float>(0.f);
     }
 };
@@ -1189,7 +1137,7 @@ eavlFloatArray* eavlSimpleVRMutator::getDepthBuffer(float proj22, float proj23, 
 
 void eavlSimpleVRMutator::setColorMap3f(float* cmap,int size)
 {
-    if(verbose) cout<<"Setting new color map 3f"<<endl;
+    if(verbose&& myCallingProc==0) cout<<"Setting new color map 3f"<<endl;
     colormapSize = size;
     if(color_map_array != NULL)
     {
@@ -1220,7 +1168,7 @@ void eavlSimpleVRMutator::setColorMap3f(float* cmap,int size)
 
 void eavlSimpleVRMutator::setColorMap4f(float* cmap,int size)
 {
-    if(verbose) cout<<"Setting new color map of size "<<size<<endl;
+    if(verbose&& myCallingProc==0) cout<<"Setting new color map of size "<<size<<endl;
     colormapSize = size;
     if(color_map_array != NULL)
     {
@@ -1251,7 +1199,7 @@ void eavlSimpleVRMutator::setColorMap4f(float* cmap,int size)
 //-------------------------------------------------
 
 void eavlSimpleVRMutator::setDefaultColorMap()
-{   if(verbose) cout<<"setting defaul color map"<<endl;
+{   if(verbose&& myCallingProc==0) cout<<"setting defaul color map"<<endl;
     if(color_map_array!=NULL)
     {
         color_map_array->unbind(cmap_tref);
@@ -1268,7 +1216,7 @@ void eavlSimpleVRMutator::setDefaultColorMap()
     colormap_raw= new float[8];
     for(int i=0;i<8;i++) colormap_raw[i]=1.f;
     color_map_array = new eavlConstTexArray<float4>((float4*)colormap_raw, colormapSize, cmap_tref, cpu);
-    if(verbose) cout<<"Done setting defaul color map"<<endl;
+    if(verbose&& myCallingProc==0) cout<<"Done setting defaul color map"<<endl;
 
 }
 
@@ -1292,7 +1240,7 @@ void eavlSimpleVRMutator::calcMemoryRequirements()
     mem += numTets * 4 * sizeof(int);           //indexscan, mask, currentPassMembers
     mem += passCountEstimate * sizeof(int);     //reverse index
     double memd = (double) mem / (1024.0 * 1024.0);
-    if(verbose) printf("Memory needed %10.3f MB. Do you have enough?\n", memd);
+    if(verbose&& myCallingProc==0) printf("Memory needed %10.3f MB. Do you have enough?\n", memd);
     
     if(!cpu)
     {
@@ -1304,7 +1252,7 @@ void eavlSimpleVRMutator::calcMemoryRequirements()
         double free_db = (double)free_byte ;
         double total_db = (double)total_byte ;
         double used_db = total_db - free_db ;
-        if(verbose) printf("GPU memory usage: used = %f, free = %f MB, total = %f MB\n", used_db/1024.0/1024.0, free_db/1024.0/1024.0, total_db/1024.0/1024.0);
+        if(verbose&& myCallingProc==0) printf("GPU memory usage: used = %f, free = %f MB, total = %f MB\n", used_db/1024.0/1024.0, free_db/1024.0/1024.0, total_db/1024.0/1024.0);
         if(mem > free_byte)
         {
             cout<<"Warning : this will exceed memory usage by "<< (mem - free_byte) << "bytes.\n";
@@ -1362,7 +1310,7 @@ void eavlSimpleVRMutator::init()
     {   
 //cerr << "NUM PASSES = " << numPasses << endl;
         setNumPasses(numPasses);
-        if(verbose) cout<<"Size Dirty"<<endl;
+        if(verbose&& myCallingProc==0) cout<<"Size Dirty"<<endl;
        
         deleteClassPtr(samples);
         deleteClassPtr(samplesID);
@@ -1377,15 +1325,15 @@ void eavlSimpleVRMutator::init()
         zBuffer         = new eavlFloatArray("",1,height*width);
         minSample       = new eavlIntArray("",1,height*width);
         clearSamplesArray();
-        if(verbose) cout<<"Samples array size "<<pixelsPerPass<<" Current CPU val "<<cpu<< endl;
-        if(verbose) cout<<"Current framebuffer size "<<(height*width*4)<<endl;
+        if(verbose&& myCallingProc==0) cout<<"Samples array size "<<pixelsPerPass<<" Current CPU val "<<cpu<< endl;
+        if(verbose&& myCallingProc==0) cout<<"Current framebuffer size "<<(height*width*4)<<endl;
         sizeDirty = false;
          
     }
 
     if(geomDirty && numTets > 0)
     {   
-        if(verbose) cout<<"Geometry Dirty"<<endl;
+        if(verbose&& myCallingProc==0) cout<<"Geometry Dirty"<<endl;
         firstPass = true;
         passNumDirty = true;
         freeTextures();
@@ -1433,7 +1381,7 @@ void eavlSimpleVRMutator::init()
 
     if(passNumDirty)
     {
-        if(verbose) cout<<"Pass Dirty"<<endl;
+        if(verbose&& myCallingProc==0) cout<<"Pass Dirty"<<endl;
         if(firstPass) 
         {
        
@@ -1465,7 +1413,7 @@ void eavlSimpleVRMutator::init()
         for(int i=0; i < size; i++) screenIterator->SetValue(i,i);
         int space  = passCountEstimate*3;
         if(space < 0) cout<<"ERROR int overflow"<<endl;
-        if(verbose) cout<<"allocating pce "<<passCountEstimate<<endl;
+        if(verbose&& myCallingProc==0) cout<<"allocating pce "<<passCountEstimate<<endl;
         ssa = new eavlFloatArray("",1, passCountEstimate*3); 
         ssb = new eavlFloatArray("",1, passCountEstimate*3);
         ssc = new eavlFloatArray("",1, passCountEstimate*3);
@@ -1500,7 +1448,7 @@ void eavlSimpleVRMutator::performScreenSpaceTransform(eavlIntArray *tetIds, int 
 	int numPassMembers = tetIds->GetNumberOfTuples();
     int outputArraySize = ssa->GetNumberOfTuples() / 3;
    
-  //cerr<<"Number of Big Cells "<<numPassMembers<<"\n"; 
+  //cerr<<"*********** Number of Cells "<<numPassMembers<<"\n"; 
 
    if(numPassMembers > outputArraySize)
     {
@@ -1589,6 +1537,12 @@ void eavlSimpleVRMutator::findCurrentPassMembers(int pass)
 }
 
 //-------------------------------------------------
+int omp_thread_count() {
+    int n = 0;
+    #pragma omp parallel reduction(+:n)
+    n += 1;
+    return n;
+}
 void  eavlSimpleVRMutator::Execute()
 {
     //
@@ -1601,10 +1555,13 @@ void  eavlSimpleVRMutator::Execute()
     //cerr<<"IN execute\n";
 	bool execDebug = true;
 
-//omp_set_dynamic(0);     // Explicitly disable dynamic teams
-//omp_set_num_threads(4);
+omp_set_dynamic(0);     // Explicitly disable dynamic teams
+omp_set_num_threads(16);
 //#pragma omp parallel
-  cerr<<"num of threads "<<omp_get_num_threads()<<"\n";
+
+if(myCallingProc==0)
+  cerr<<"num of threads "<<omp_thread_count()<<"\n";
+//omp_get_num_threads()<<"\n";
 
 
 
@@ -1747,7 +1704,7 @@ if(myCallingProc == 0)
     if(execDebug) 
  ttot = eavlTimer::Start();
 
-    if(verbose)
+    if(verbose && myCallingProc==0)
     {
         cout<<"BBox Screen Space "<<mins<<maxs<<endl; 
     }
@@ -1977,8 +1934,8 @@ tcomp = eavlTimer::Start();
             
              
             //-----------------------------------------------
-            
            
+            
              eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(eavlIndexable<eavlIntArray>(screenIterator),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -1996,7 +1953,7 @@ tcomp = eavlTimer::Start();
 
             
 	    //cerr<<"Add composite op\n";
-	    eavlExecutor::Go(); 
+	    eavlExecutor::Go();
 	    //cerr<<"Done composite \n";
             if(execDebug)
  compositeTime += eavlTimer::Stop(tcomp,"tcomp");
@@ -2046,7 +2003,7 @@ cout<<"Time for Exec Fun: "<<ExecuteTime<<endl;
     //composite my pixel color with background
 
     //cerr<<"Before composite\n";
-/*
+
  eavlExecutor::AddOperation(new_eavlMapOp(eavlOpArgs(
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ir),
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ig),
@@ -2058,7 +2015,7 @@ cout<<"Time for Exec Fun: "<<ExecuteTime<<endl;
                                                                  eavlIndexable<eavlFloatArray>(framebuffer,*ia)),
                                                      CompositeBG(bgColor), height*width),
                                                      "Composite");
-    eavlExecutor::Go();*/
+    eavlExecutor::Go();
 
     //cerr<<"After composte \n";
 }
