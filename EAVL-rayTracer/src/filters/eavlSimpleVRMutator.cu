@@ -498,22 +498,23 @@ struct SampleFunctor3
 
         float4 s = scalars->getValue(scalars_tref, tet);
 
+        float w1 = xmin - p[0].x;
+    	float w1d1 =  w1 * d1;
+    	float w1d2 =  w1 * d2;
+    	float w1d3 =  w1 * d3;
         for(int x = xmin; x <= xmax; ++x)
         {
-        	float w1 = x - p[0].x;
-        	float w1d1 =  w1 * d1;
-        	float w1d2 =  w1 * d2;
-        	float w1d3 =  w1 * d3;
+        	float w2 = ymin - p[0].y;
+        	float w2d4 =  w2 * d4;
+        	float w2d6 =  w2 * d6;
+        	float w2d8 =  w2 * d8;
 
             for(int y = ymin; y <= ymax; ++y)
             { 
                 int pixel = ( (y+miny) * view.w + x + minx);
                 if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
 
-                float w2 = y - p[0].y; 
-                float w2d4 =  w2 * d4;
-        		float w2d6 =  w2 * d6;
-        		float w2d8 =  w2 * d8;
+              
 
         		float w1d1_minus_w2d4 = w1d1 - w2d4;
         		float neg_w1d2_plus_w2d6= -w1d2 + w2d6;
@@ -523,27 +524,44 @@ struct SampleFunctor3
                 #pragma ivdep
                 bool found = false;
                 bool backTrack = false;
-                for(int z=zmin; z<=zmax; ++z)
+
+                float w3 = zmin - p[0].z; 
+                float xx = w1d1_minus_w2d4 + w3 * d5;
+                float yy = neg_w1d2_plus_w2d6 - w3 * d7; 
+                float zz = w1d3_minus_w2d8 + w3 * d9;
+                float aa = inverseDet - xx - yy - zz;
+
+                for(int z=zmin; z<=zmax; z++)
                 {
-
-                	float w3 = z - p[0].z; 
-
-                    float xx = w1d1_minus_w2d4 + w3 * d5;
-                    float yy = neg_w1d2_plus_w2d6 - w3 * d7; 
-                    float zz = w1d3_minus_w2d8 + w3 * d9;
-                    float aa = inverseDet - xx - yy - zz;
+                	//std::cout<<z<<std::endl;
+                	float aa = inverseDet - xx - yy - zz;
 
 
                     if(det>0 && (ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= inverseDet)) 
                     {
-                    	if(!found &&!backTrack)
+
+                    	if(!found && z!=zmin) //if this is the first 1 you have found and are not backtracking
 		                {
 	                		//need to check the previous
-	                		backTrack = true;
-	                		z-=1;
-	                		continue;
+	                		float bw3 = z-1 - p[0].z; 
+
+		                    float bxx = w1d1_minus_w2d4 + bw3 * d5;
+		                    float byy = neg_w1d2_plus_w2d6 - bw3 * d7; 
+		                    float bzz = w1d3_minus_w2d8 + bw3 * d9;
+		                    float baa = inverseDet - bxx - byy - bzz;
+		                    if((ffmin(baa,ffmin(bxx,ffmin(byy,bzz))) >= 0.f && ffmax(baa,ffmax(bxx,ffmax(byy,bzz))) <= inverseDet)) 
+		                    {
+		                    	int index3d = startindex + z-1;
+                    			float lerped = (baa*s.x + bxx*s.y + byy*s.z + bzz*s.w);
+                    			samples[index3d] = lerped*det;
+		                    }
+	                		
 		                }
+
+
+
                     	found = true;
+                    	backTrack = false;
                     	int index3d = startindex + z;
                     	float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
                         samples[index3d] = lerped*det;
@@ -552,12 +570,22 @@ struct SampleFunctor3
                     else if(det<0 && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= 0.f && (ffmin(aa,ffmin(xx,ffmin(yy,zz)))) >= inverseDet) 
                     {
 
-                    	if(!found &&!backTrack)
+                    	if(!found && z!=zmin) //if this is the first 1 you have found and are not backtracking
 		                {
 	                		//need to check the previous
-	                		backTrack = true;
-	                		z-=1;
-	                		continue;
+	                		float bw3 = z-1 - p[0].z; 
+
+		                    float bxx = w1d1_minus_w2d4 + bw3 * d5;
+		                    float byy = neg_w1d2_plus_w2d6 - bw3 * d7; 
+		                    float bzz = w1d3_minus_w2d8 + bw3 * d9;
+		                    float baa = inverseDet - bxx - byy - bzz;
+		                    if(ffmax(baa,ffmax(bxx,ffmax(byy,bzz))) <= 0.f && (ffmin(baa,ffmin(bxx,ffmin(byy,bzz)))) >= inverseDet)  
+		                    {
+		                    	int index3d = startindex + z-1;
+                    			float lerped = (baa*s.x + bxx*s.y + byy*s.z + bzz*s.w);
+                    			samples[index3d] = lerped*det;
+		                    }
+	                		
 		                }
 
                     	found = true;
@@ -565,21 +593,31 @@ struct SampleFunctor3
                     	float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
                     	samples[index3d] = lerped*det;
                     }
-	                else if(found && !backTrack)
+	                else if(found)
 	                {
 	                	break;
-	                }
-	                else if(backTrack)
-	                {
-	                	backTrack = false;
 	                }
 	                else
 	                {
 	                	z++;
 	                }
 
+	             w3 +=1; 
+                 xx += d5;
+                 yy -= d7; 
+                 zz += d9;
+                
+
                 }//z
+                 w2 +=1;
+	        	 w2d4 += d4;
+	        	 w2d6 += d6;
+	        	 w2d8 += d8;
             }//y
+            w1 +=1;
+	    	w1d1 += d1;
+	    	w1d2 += d2;
+	    	w1d3 +=d3;
         }//x
 
         return tuple<float>(0.f);
@@ -588,76 +626,77 @@ struct SampleFunctor3
        
     
 
-        // for(int x = xmin; x <= xmax; ++x)
-        // {
-        //     for(int y = ymin; y <= ymax; ++y)
-        //     { 
-        //         int pixel = ( (y+miny) * view.w + x + minx);
-        //         if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
+        for(int x = xmin; x <= xmax; ++x)
+        {
+            for(int y = ymin; y <= ymax; ++y)
+            { 
+                int pixel = ( (y+miny) * view.w + x + minx);
+                if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
                 
-        //         int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
-        //         #pragma ivdep
-        //         for(int z=zmin; z<=zmax; ++z)
-        //         {
+                int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
+                #pragma ivdep
+                for(int z=zmin; z<=zmax; ++z)
+                {
 
-        //             float w1 = x - p[0].x; 
-        //             float w2 = y - p[0].y; 
-        //             float w3 = z - p[0].z; 
+                    float w1 = x - p[0].x; 
+                    float w2 = y - p[0].y; 
+                    float w3 = z - p[0].z; 
 
-        //             float xx =   w1 * d1 - w2 * d4 + w3 * d5;
-        //             xx *= det; 
+                    float xx =   w1 * d1 - w2 * d4 + w3 * d5;
+                    xx *= det; 
 
-        //             float yy = - w1 * d2 + w2 * d6 - w3 * d7; 
-        //             yy *= det;
+                    float yy = - w1 * d2 + w2 * d6 - w3 * d7; 
+                    yy *= det;
 
-        //             float zz =   w1 * d3 - w2 * d8 + w3 * d9;
-        //             zz *= det;
-        //             w1 = xx; 
-        //             w2 = yy; 
-        //             w3 = zz; 
+                    float zz =   w1 * d3 - w2 * d8 + w3 * d9;
+                    zz *= det;
+                    w1 = xx; 
+                    w2 = yy; 
+                    w3 = zz; 
 
-        //             float w0 = 1.f - w1 - w2 - w3;
+                    float w0 = 1.f - w1 - w2 - w3;
 
-        //             int index3d = startindex + z;
-        //             float lerped = w0*s.x + w1*s.y + w2*s.z + w3*s.w;
-        //             float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
-        //             float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
+                    int index3d = startindex + z;
+                    float lerped = w0*s.x + w1*s.y + w2*s.z + w3*s.w;
+                    float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
+                    float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
 
-        //          // if(tet == 694940)
-        //          // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
+                 // if(tet == 694940)
+                 // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
 
-        //             //Check if the pixel is inside the tet
-        //         if((a >= 0.f && b <= 1.f)) 
-        //          {
-        //          	 samples[index3d] = lerped;
+                    //Check if the pixel is inside the tet
+                if((a >= 0.f && b <= 1.f)) 
+                 {
+                 	// samples[index3d] = lerped;
 
-        //          	// if(samples[index3d] != lerped)
-        //          	// {
-        //          	// 	float val = samples[index3d];
-        //          	// 	// check to a 99 percent range
-        //          	// 	if(abs(lerped - val)/val>=0.01)
-        //          	// 	{
-        //          	// 		std::cout<<samples[index3d]<<" "<<lerped<<std::endl;
-        //          	// 		assert(samples[index3d] == lerped);
-        //          	// 	}
+                 	if(samples[index3d] != lerped)
+                 	{
+                 		float val = samples[index3d];
+                 		// check to a 99 percent range
+                 		if(abs(lerped - val)/val>=0.01)
+                 		{
+                 			std::cout<<samples[index3d]<<" "<<lerped<<std::endl;
+                 			assert(samples[index3d] == lerped);
+                 		}
 
                  		
-        //          	// }
+                 	}
                  	
                       
                        
 
 
                 
-        //          }
+                 }
                      
                    
 
-        //         }//z
-        //     }//y                                                                                                                                                                                           
-        // }//x
+                }//z
+            }//y                                                                                                                                                                                           
+        }//x
 
-        // return tuple<float>(0.f);
+
+        return tuple<float>(0.f);
     }
 };
 
