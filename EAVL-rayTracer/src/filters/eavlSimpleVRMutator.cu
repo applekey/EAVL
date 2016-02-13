@@ -454,6 +454,7 @@ struct SampleFunctor3
         float det = v[0].x * d1 - v[1].x * d2 + v[2].x * d3;
 
         if(det == 0) return tuple<float>(0.f); // dirty degenerate tetrahedron
+        float inverseDet = det;
         det  = 1.f  / det;
 
         //D22(mat[0][1], mat[0][2], mat[2][1], mat[2][2]);
@@ -513,96 +514,150 @@ struct SampleFunctor3
                 float w2d4 =  w2 * d4;
         		float w2d6 =  w2 * d6;
         		float w2d8 =  w2 * d8;
+
+        		float w1d1_minus_w2d4 = w1d1 - w2d4;
+        		float neg_w1d2_plus_w2d6= -w1d2 + w2d6;
+        		float w1d3_minus_w2d8 = w1d3 - w2d8;
                 
                 int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
                 #pragma ivdep
+                bool found = false;
+                bool backTrack = false;
                 for(int z=zmin; z<=zmax; ++z)
                 {
+
                 	float w3 = z - p[0].z; 
 
-                    float xx =   w1d1 - w2d4 + w3 * d5;
-                    xx *= det; 
+                    float xx = w1d1_minus_w2d4 + w3 * d5;
+                    float yy = neg_w1d2_plus_w2d6 - w3 * d7; 
+                    float zz = w1d3_minus_w2d8 + w3 * d9;
+                    float aa = inverseDet - xx - yy - zz;
 
-                    float yy = - w1d2 + w2d6 - w3 * d7; 
-                    yy *= det;
 
-                    float zz =   w1d3 - w2d8 + w3 * d9;
-                    zz *= det;
-
-                    float w1t = xx;
-                    float w2t = yy;
-                    float w3t = zz;
-                    float w0t = 1.f - w1t - w2t - w3t;
-
-                    if((ffmin(w0t,ffmin(w1t,ffmin(w2t,w3t))) >= 0.f && ffmax(w0t,ffmax(w1t,ffmax(w2t,w3t))) <= 1.f)) 
+                    if(det>0 && (ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= inverseDet)) 
                     {
+                    	if(!found &&!backTrack)
+		                {
+	                		//need to check the previous
+	                		backTrack = true;
+	                		z-=1;
+	                		continue;
+		                }
+                    	found = true;
                     	int index3d = startindex + z;
-                    	float lerped = w0t*s.x + w1t*s.y + w2t*s.z + w3t*s.w;
-                        samples[index3d] = lerped;
+                    	float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
+                        samples[index3d] = lerped*det;
                         //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
                     }
+                    else if(det<0 && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= 0.f && (ffmin(aa,ffmin(xx,ffmin(yy,zz)))) >= inverseDet) 
+                    {
+
+                    	if(!found &&!backTrack)
+		                {
+	                		//need to check the previous
+	                		backTrack = true;
+	                		z-=1;
+	                		continue;
+		                }
+
+                    	found = true;
+                    	int index3d = startindex + z;
+                    	float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
+                    	samples[index3d] = lerped*det;
+                    }
+	                else if(found && !backTrack)
+	                {
+	                	break;
+	                }
+	                else if(backTrack)
+	                {
+	                	backTrack = false;
+	                }
+	                else
+	                {
+	                	z++;
+	                }
 
                 }//z
             }//y
         }//x
 
-        // the old code
-        for(int x = xmin; x <= xmax; ++x)
-        {
-            for(int y = ymin; y <= ymax; ++y)
-            { 
-                int pixel = ( (y+miny) * view.w + x + minx);
-                if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
+        return tuple<float>(0.f);
+
+        //the old code to check
+       
+    
+
+        // for(int x = xmin; x <= xmax; ++x)
+        // {
+        //     for(int y = ymin; y <= ymax; ++y)
+        //     { 
+        //         int pixel = ( (y+miny) * view.w + x + minx);
+        //         if(fb[pixel * 4 + 3] >= 1) {continue;} //TODO turn this on using sample space to screen space
                 
-                int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
-                #pragma ivdep
-                for(int z=zmin; z<=zmax; ++z)
-                {
+        //         int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
+        //         #pragma ivdep
+        //         for(int z=zmin; z<=zmax; ++z)
+        //         {
 
-                    float w1 = x - p[0].x; 
-                    float w2 = y - p[0].y; 
-                    float w3 = z - p[0].z; 
+        //             float w1 = x - p[0].x; 
+        //             float w2 = y - p[0].y; 
+        //             float w3 = z - p[0].z; 
 
-                    float xx =   w1 * d1 - w2 * d4 + w3 * d5;
-                    xx *= det; 
+        //             float xx =   w1 * d1 - w2 * d4 + w3 * d5;
+        //             xx *= det; 
 
-                    float yy = - w1 * d2 + w2 * d6 - w3 * d7; 
-                    yy *= det;
+        //             float yy = - w1 * d2 + w2 * d6 - w3 * d7; 
+        //             yy *= det;
 
-                    float zz =   w1 * d3 - w2 * d8 + w3 * d9;
-                    zz *= det;
-                    w1 = xx; 
-                    w2 = yy; 
-                    w3 = zz; 
+        //             float zz =   w1 * d3 - w2 * d8 + w3 * d9;
+        //             zz *= det;
+        //             w1 = xx; 
+        //             w2 = yy; 
+        //             w3 = zz; 
 
-                    float w0 = 1.f - w1 - w2 - w3;
+        //             float w0 = 1.f - w1 - w2 - w3;
 
-                    int index3d = startindex + z;
-                    float lerped = w0*s.x + w1*s.y + w2*s.z + w3*s.w;
-                    float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
-                    float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
+        //             int index3d = startindex + z;
+        //             float lerped = w0*s.x + w1*s.y + w2*s.z + w3*s.w;
+        //             float a = ffmin(w0,ffmin(w1,ffmin(w2,w3)));
+        //             float b = ffmax(w0,ffmax(w1,ffmax(w2,w3)));
 
-                 // if(tet == 694940)
-                 // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
+        //          // if(tet == 694940)
+        //          // cerr<<"Value "<<lerped<<" index3d "<<index3d<<"\n";
 
-                    //Check if the pixel is inside the tet
-                if((a >= 0.f && b <= 1.f)) 
-                 {
-                 	assert(samples[index3d] == lerped);
-                
+        //             //Check if the pixel is inside the tet
+        //         if((a >= 0.f && b <= 1.f)) 
+        //          {
+        //          	 samples[index3d] = lerped;
+
+        //          	// if(samples[index3d] != lerped)
+        //          	// {
+        //          	// 	float val = samples[index3d];
+        //          	// 	// check to a 99 percent range
+        //          	// 	if(abs(lerped - val)/val>=0.01)
+        //          	// 	{
+        //          	// 		std::cout<<samples[index3d]<<" "<<lerped<<std::endl;
+        //          	// 		assert(samples[index3d] == lerped);
+        //          	// 	}
+
+                 		
+        //          	// }
+                 	
+                      
                        
 
 
                 
-                 }
+        //          }
                      
                    
 
-                }//z
-            }//y                                                                                                                                                                                           
-        }//x
+        //         }//z
+        //     }//y                                                                                                                                                                                           
+        // }//x
 
-        return tuple<float>(0.f);
+        // return tuple<float>(0.f);
     }
 };
 
@@ -1555,8 +1610,7 @@ void  eavlSimpleVRMutator::Execute()
     //cerr<<"IN execute\n";
 	bool execDebug = true;
 
-omp_set_dynamic(0);     // Explicitly disable dynamic teams
-omp_set_num_threads(16);
+
 //#pragma omp parallel
 
 if(myCallingProc==0)
