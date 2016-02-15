@@ -498,23 +498,34 @@ struct SampleFunctor3
 
         float4 s = scalars->getValue(scalars_tref, tet);
 
-        int multiplier = 1;
+        float multiplier = 1;
+        bool modified = false;
         if(det<1)
         {
+            modified = true;
             multiplier = -1;
             det = -det;
             inverseDet = -inverseDet;
+            d1*=multiplier;
+            d2*=multiplier;
+            d3*=multiplier;
+            d4*=multiplier;
+            d5*=multiplier;
+            d6*=multiplier;
+            d7*=multiplier;
+            d8*=multiplier;
+            d9*=multiplier;
         }
 
         float w1 = xmin - p[0].x;
-        w1*=multiplier;
+        //w1*=multiplier;
         float w1d1 =  w1 * d1;
         float w1d2 =  w1 * d2;
         float w1d3 =  w1 * d3;
         for(int x = xmin; x <= xmax; ++x)
         {
             float w2 = ymin - p[0].y;
-            w2*=multiplier;
+            //w2*=multiplier;
             float w2d4 =  w2 * d4;
             float w2d6 =  w2 * d6;
             float w2d8 =  w2 * d8;
@@ -536,7 +547,7 @@ struct SampleFunctor3
                 bool backTrack = false;
 
                 float w3 = zmin - p[0].z; 
-                w3*=multiplier;
+                //w3*=multiplier;
                 float xx = w1d1_minus_w2d4 + w3 * d5;
                 float yy = neg_w1d2_plus_w2d6 - w3 * d7; 
                 float zz = w1d3_minus_w2d8 + w3 * d9;
@@ -548,7 +559,7 @@ struct SampleFunctor3
                     float aa = inverseDet - xx - yy - zz;
 
 
-                    if(det>0 && (ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= inverseDet)) 
+                    if(ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= inverseDet) 
                     {
                         found = true;
                         int index3d = startindex + z;
@@ -584,7 +595,20 @@ struct SampleFunctor3
 
         //the old code to check
        
-    
+        if(modified)
+        {
+            det = -det;
+            inverseDet = -inverseDet;
+            d1*=multiplier;
+            d2*=multiplier;
+            d3*=multiplier;
+            d4*=multiplier;
+            d5*=multiplier;
+            d6*=multiplier;
+            d7*=multiplier;
+            d8*=multiplier;
+            d9*=multiplier;
+        }
 
         for(int x = xmin; x <= xmax; ++x)
         {
@@ -627,16 +651,20 @@ struct SampleFunctor3
                     //Check if the pixel is inside the tet
                 if((a >= 0.f && b <= 1.f)) 
                  {
-                     // samples[index3d] = lerped;
+                     //samples[index3d] = lerped;
 
                      if(samples[index3d] != lerped)
                      {
                          float val = samples[index3d];
                          // check to a 99 percent range
-                         if(abs(lerped - val)/val>=0.01)
+                         if(abs(lerped - val)/val>=0.001)
                          {
-                             std::cout<<samples[index3d]<<" "<<lerped<<std::endl;
-                             assert(samples[index3d] == lerped);
+                             std::cout<<endl;
+                             std::cout<<endl;
+                             std::cout<<"Error!!!! "<<samples[index3d]<<" "<<lerped<<std::endl;
+                             std::cout<<endl;
+                             std::cout<<endl;
+                             //assert(samples[index3d] == lerped);
                          }
 
                         
