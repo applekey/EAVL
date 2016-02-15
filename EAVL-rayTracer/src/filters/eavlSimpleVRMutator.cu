@@ -498,16 +498,26 @@ struct SampleFunctor3
 
         float4 s = scalars->getValue(scalars_tref, tet);
 
+        int multiplier = 1;
+        if(det<1)
+        {
+            multiplier = -1;
+            det = -det;
+            inverseDet = -inverseDet;
+        }
+
         float w1 = xmin - p[0].x;
-    	float w1d1 =  w1 * d1;
-    	float w1d2 =  w1 * d2;
-    	float w1d3 =  w1 * d3;
+        w1*=multiplier;
+        float w1d1 =  w1 * d1;
+        float w1d2 =  w1 * d2;
+        float w1d3 =  w1 * d3;
         for(int x = xmin; x <= xmax; ++x)
         {
-        	float w2 = ymin - p[0].y;
-        	float w2d4 =  w2 * d4;
-        	float w2d6 =  w2 * d6;
-        	float w2d8 =  w2 * d8;
+            float w2 = ymin - p[0].y;
+            w2*=multiplier;
+            float w2d4 =  w2 * d4;
+            float w2d6 =  w2 * d6;
+            float w2d8 =  w2 * d8;
 
             for(int y = ymin; y <= ymax; ++y)
             { 
@@ -516,9 +526,9 @@ struct SampleFunctor3
 
               
 
-        		float w1d1_minus_w2d4 = w1d1 - w2d4;
-        		float neg_w1d2_plus_w2d6= -w1d2 + w2d6;
-        		float w1d3_minus_w2d8 = w1d3 - w2d8;
+                float w1d1_minus_w2d4 = w1d1 - w2d4;
+                float neg_w1d2_plus_w2d6= -w1d2 + w2d6;
+                float w1d3_minus_w2d8 = w1d3 - w2d8;
                 
                 int startindex = (y * dx + x) * zSize;//dx*(y + dy*(z -passMinZPixel));
                 #pragma ivdep
@@ -526,6 +536,7 @@ struct SampleFunctor3
                 bool backTrack = false;
 
                 float w3 = zmin - p[0].z; 
+                w3*=multiplier;
                 float xx = w1d1_minus_w2d4 + w3 * d5;
                 float yy = neg_w1d2_plus_w2d6 - w3 * d7; 
                 float zz = w1d3_minus_w2d8 + w3 * d9;
@@ -533,76 +544,25 @@ struct SampleFunctor3
 
                 for(int z=zmin; z<=zmax; z++)
                 {
-                	//std::cout<<z<<std::endl;
-                	float aa = inverseDet - xx - yy - zz;
+                    //std::cout<<z<<std::endl;
+                    float aa = inverseDet - xx - yy - zz;
 
 
                     if(det>0 && (ffmin(aa,ffmin(xx,ffmin(yy,zz))) >= 0.f && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= inverseDet)) 
                     {
-
-                    	if(!found && z!=zmin) //if this is the first 1 you have found and are not backtracking
-		                {
-	                		//need to check the previous
-	                		float bw3 = z-1 - p[0].z; 
-
-		                    float bxx = w1d1_minus_w2d4 + bw3 * d5;
-		                    float byy = neg_w1d2_plus_w2d6 - bw3 * d7; 
-		                    float bzz = w1d3_minus_w2d8 + bw3 * d9;
-		                    float baa = inverseDet - bxx - byy - bzz;
-		                    if((ffmin(baa,ffmin(bxx,ffmin(byy,bzz))) >= 0.f && ffmax(baa,ffmax(bxx,ffmax(byy,bzz))) <= inverseDet)) 
-		                    {
-		                    	int index3d = startindex + z-1;
-                    			float lerped = (baa*s.x + bxx*s.y + byy*s.z + bzz*s.w);
-                    			samples[index3d] = lerped*det;
-		                    }
-	                		
-		                }
-
-
-
-                    	found = true;
-                    	backTrack = false;
-                    	int index3d = startindex + z;
-                    	float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
+                        found = true;
+                        int index3d = startindex + z;
+                        float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
                         samples[index3d] = lerped*det;
                         //if(lerped < 0 || lerped >1) printf("Bad lerp %f ",lerped);
                     }
-                    else if(det<0 && ffmax(aa,ffmax(xx,ffmax(yy,zz))) <= 0.f && (ffmin(aa,ffmin(xx,ffmin(yy,zz)))) >= inverseDet) 
+                    
+                    else if(found)
                     {
-
-                    	if(!found && z!=zmin) //if this is the first 1 you have found and are not backtracking
-		                {
-	                		//need to check the previous
-	                		float bw3 = z-1 - p[0].z; 
-
-		                    float bxx = w1d1_minus_w2d4 + bw3 * d5;
-		                    float byy = neg_w1d2_plus_w2d6 - bw3 * d7; 
-		                    float bzz = w1d3_minus_w2d8 + bw3 * d9;
-		                    float baa = inverseDet - bxx - byy - bzz;
-		                    if(ffmax(baa,ffmax(bxx,ffmax(byy,bzz))) <= 0.f && (ffmin(baa,ffmin(bxx,ffmin(byy,bzz)))) >= inverseDet)  
-		                    {
-		                    	int index3d = startindex + z-1;
-                    			float lerped = (baa*s.x + bxx*s.y + byy*s.z + bzz*s.w);
-                    			samples[index3d] = lerped*det;
-		                    }
-	                		
-		                }
-
-                    	found = true;
-                    	int index3d = startindex + z;
-                    	float lerped = (aa*s.x + xx*s.y + yy*s.z + zz*s.w);
-                    	samples[index3d] = lerped*det;
+                        break;
                     }
-	                else if(found)
-	                {
-	                	break;
-	                }
-	                else
-	                {
-	                	z++;
-	                }
-
-	             w3 +=1; 
+                   
+                 w3 +=1; 
                  xx += d5;
                  yy -= d7; 
                  zz += d9;
@@ -610,14 +570,14 @@ struct SampleFunctor3
 
                 }//z
                  w2 +=1;
-	        	 w2d4 += d4;
-	        	 w2d6 += d6;
-	        	 w2d8 += d8;
+                 w2d4 += d4;
+                 w2d6 += d6;
+                 w2d8 += d8;
             }//y
             w1 +=1;
-	    	w1d1 += d1;
-	    	w1d2 += d2;
-	    	w1d3 +=d3;
+            w1d1 += d1;
+            w1d2 += d2;
+            w1d3 +=d3;
         }//x
 
         return tuple<float>(0.f);
@@ -667,21 +627,21 @@ struct SampleFunctor3
                     //Check if the pixel is inside the tet
                 if((a >= 0.f && b <= 1.f)) 
                  {
-                 	// samples[index3d] = lerped;
+                     // samples[index3d] = lerped;
 
-                 	if(samples[index3d] != lerped)
-                 	{
-                 		float val = samples[index3d];
-                 		// check to a 99 percent range
-                 		if(abs(lerped - val)/val>=0.01)
-                 		{
-                 			std::cout<<samples[index3d]<<" "<<lerped<<std::endl;
-                 			assert(samples[index3d] == lerped);
-                 		}
+                     if(samples[index3d] != lerped)
+                     {
+                         float val = samples[index3d];
+                         // check to a 99 percent range
+                         if(abs(lerped - val)/val>=0.01)
+                         {
+                             std::cout<<samples[index3d]<<" "<<lerped<<std::endl;
+                             assert(samples[index3d] == lerped);
+                         }
 
-                 		
-                 	}
-                 	
+                        
+                     }
+                    
                       
                        
 
@@ -699,7 +659,6 @@ struct SampleFunctor3
         return tuple<float>(0.f);
     }
 };
-
 //-------------------------------------------------
 
 struct CompositeFunctorFB
